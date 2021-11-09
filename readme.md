@@ -9,13 +9,11 @@
 
 ## Recipes
 
-### Keep up to date by running it on postinstall
-Run `rn-native-hash` on `postinstall` to always keep it up to date.
+### Keep up to date
+Run `rn-native-hash` on `postinstall` to always keep it up to date:
 ```json
 {
-    // ...
     "scripts": {
-        // ...
         "postinstall": "rn-native-hash generate"
     }
 }
@@ -24,8 +22,16 @@ Run `rn-native-hash` on `postinstall` to always keep it up to date.
 ### OTA updates / Expo release channels
 Use one release channel per hash to get predictability in your OTA updates.
 
+```bash
+expo publish --release-channel `cat .rn-native-hashrc`
+```
+or
+```bash
+expo publish --release-channel `rn-native-hash generate`
+```
+
 ### Generate a new Native Client when native dependencies has changed
-Generate new native builds automatically when it's needed!
+Generate new native builds automatically when it's needed.
 
 ## Native Module Detection
 We detect native modules by looking for `ios` and/or `android` folders in each package. Please post an issue (PRs are welcome :) for any false positives/negatives you might find!

@@ -62,7 +62,7 @@ const getHashFromPackage = async (
   }
 };
 
-const getCurrentHash = async (rootDir = '.', verbose: boolean, list: boolean) => {
+const getCurrentHash = async (rootDir = '.', verbose: boolean, list = false, quiet = false) => {
   const dir = `${rootDir}/node_modules`;
   try {
     const modules = await readdir(dir);
@@ -109,7 +109,9 @@ const getCurrentHash = async (rootDir = '.', verbose: boolean, list: boolean) =>
     }
 
     const hash = createHash('md5').update(stringToHashFrom).digest('hex');
-    console.log(bold(`rn-native-hash: ${hash} (${nativeModules.length} native modules)`));
+    if (!quiet) {
+      console.log(bold(`rn-native-hash: ${hash} (${nativeModules.length} native modules)`));
+    }
 
     return hash;
   } catch (e) {
@@ -319,7 +321,29 @@ void yargs(hideBin(process.argv))
     }
 
     if (verbose) console.info(`getting depenency hash for native dependencies in: ${rootDir}`);
-    await getCurrentHash(rootDir, verbose, true);
+    const hash = await getCurrentHash(rootDir, verbose, true);
+    process.stdout.write(hash);
+  })
+  .command('hash [rootDir]', 'Returns the hash for piping', (y) => y
+    .positional('rootDir', {
+      describe: 'root directory to check node_modules',
+      default: '.',
+    }).option('verbose', {
+      alias: 'v',
+      type: 'boolean',
+      description: 'Run with verbose logging',
+    }), async (argv) => {
+    const verbose = argv.verbose || argv.v as boolean || false;
+
+    const rootDir = absoluteOrRelativePath(argv.rootDir);
+
+    if (verbose) {
+      console.log('rn-native-hash', argv);
+    }
+
+    if (verbose) console.info(`getting depenency hash for native dependencies in: ${rootDir}`);
+    const hash = await getCurrentHash(rootDir, verbose, false, true);
+    process.stdout.write(hash);
   })
   .recommendCommands()
   .demandCommand(1)
