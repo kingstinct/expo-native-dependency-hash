@@ -7,6 +7,18 @@
 
 ## Recipes
 
+### Keep up to date by running it on postinstall
+Run `rn-native-hash` on `postinstall` to always keep it up to date.
+```json
+{
+    // ...
+    "scripts": {
+        // ...
+        "postinstall": "rn-native-hash generate"
+    }
+}
+```
+
 ### OTA updates / Expo release channels
 Use one release channel per hash to get predictability in your OTA updates.
 

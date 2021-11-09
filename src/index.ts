@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import { readdir, readFile, writeFile } from 'fs/promises';
 import { createHash } from 'crypto';
 import yargs from 'yargs';
