@@ -247,6 +247,12 @@ void yargs(hideBin(process.argv))
       description: 'Write hash to file',
       defaultDescription: DEFAULT_FILE,
     })
+    .option('eas', {
+      alias: 'e',
+      type: 'string',
+      description: 'Write hash to eas.json',
+      defaultDescription: DEFAULT_FILE,
+    })
     .option('package-json', {
       alias: 'p',
       type: 'string',
@@ -258,7 +264,8 @@ void yargs(hideBin(process.argv))
 
     const rootDir = absoluteOrRelativePath(argv.rootDir);
     const packageJsonPath = pathFromArg(argv, ['package-json', 'p'], rootDir, DEFAULT_PACKAGE_JSON);
-    const filePath = pathFromArg(argv, ['file', 'f'], rootDir, DEFAULT_FILE, !packageJsonPath);
+    const easJsonPath = pathFromArg(argv, ['eas', 'e'], rootDir, 'eas.json');
+    const filePath = pathFromArg(argv, ['file', 'f'], rootDir, DEFAULT_FILE, !packageJsonPath && !easJsonPath);
 
     if (verbose) {
       console.log('generate', argv);
@@ -278,6 +285,25 @@ void yargs(hideBin(process.argv))
       } else {
         console.warn(green(`Up to date: "${filePath}"`));
       }
+    }
+    if (easJsonPath) {
+      const propName = 'build';
+      const prev = await readFile(easJsonPath, 'utf8');
+      const prevJson = JSON.parse(prev) as { version: string };
+      Object.keys(prevJson[propName]).forEach((key) => {
+        const prevReleaseChannel = (prevJson[propName][key] as { releaseChannel: string }).releaseChannel; // eslint-disable-line
+
+        (prevJson[propName][key] as {releaseChannel: string}).releaseChannel = hash; // eslint-disable-line
+
+        if (!prevReleaseChannel) {
+          console.info(green(`Saving to "${easJsonPath}"; profile ${key}`));
+        } else if (prevReleaseChannel !== hash) {
+          console.warn(yellow(`Updating "${easJsonPath}"; profile ${key} (was ${prevReleaseChannel})`));
+        } else {
+          console.warn(green(`Up to date: "${easJsonPath}"; profile ${key}`));
+        }
+      });
+      await writeFile(easJsonPath, `${JSON.stringify(prevJson, null, 2)}\n`);
     }
     if (packageJsonPath) {
       const propName = argv['package-json-property'];
