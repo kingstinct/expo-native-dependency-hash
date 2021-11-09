@@ -1,15 +1,22 @@
 {
   "name": "rn-native-hash",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "license": "MIT",
   "author": {
     "name": "Robert Herber",
     "email": "robert@kingstinct.com",
     "url": "https://kingstinct.com"
   },
-  "keywords": ["react-native", "expo", "native", "ios", "android", "kingstinct"],
+  "keywords": [
+    "react-native",
+    "expo",
+    "native",
+    "ios",
+    "android",
+    "kingstinct"
+  ],
   "bugs": {
-    "url": ""
+    "url": "https://github.com/robertherber/rn-native-hash/issues"
   },
   "bin": {
     "rn-native-hash": "dist/index.js"
@@ -36,7 +43,8 @@
   "scripts": {
     "start": "yarn build && node ./dist/index.js",
     "build": "tsc",
-    "lint": "eslint ./src --ext .js,.jsx,.ts,.tsx"
+    "lint": "eslint ./src --ext .js,.jsx,.ts,.tsx",
+    "prepublish": "yarn build && yarn lint"
   },
   "dependencies": {
     "chalk": "^4.1.2",

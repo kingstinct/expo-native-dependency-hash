@@ -111,7 +111,7 @@ const getCurrentHash = async (rootDir = '.', verbose: boolean, list: boolean) =>
 
     return hash;
   } catch (e) {
-    console.log(red(`Have you installed your packages? "${dir}" does not seem like a valid node_modules folder (${e})`));
+    console.log(red(`Have you installed your packages? "${dir}" does not seem like a valid node_modules folder (${e as string})`));
     return process.exit(1);
   }
 };
@@ -213,7 +213,7 @@ void yargs(hideBin(process.argv))
 
     if (!valueExists) {
       console.error(red('Use "rn-native-hash generate" to create a new hash. No previous hash found, looked in:'));
-      console.error(`${filePath}\n${packageJsonPath}`);
+      console.error(`${filePath as string}\n${packageJsonPath as string}`);
       process.exit(1);
     } else if (hasChanged) {
       console.error(red('hash has changed'));
