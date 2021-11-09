@@ -1,0 +1,45 @@
+{
+  "name": "rn-native-hash",
+  "version": "0.0.1",
+  "license": "MIT",
+  "author": {
+    "name": "Robert Herber",
+    "email": "robert@kingstinct.com",
+    "url": "https://kingstinct.com"
+  },
+  "keywords": ["react-native", "expo", "native", "ios", "android", "kingstinct"],
+  "bugs": {
+    "url": ""
+  },
+  "bin": {
+    "rn-native-hash": "dist/index.js"
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "devDependencies": {
+    "@types/chalk": "^2.2.0",
+    "@types/node": "^16.11.7",
+    "@types/yargs": "^17.0.5",
+    "@typescript-eslint/eslint-plugin": "^4.29.3",
+    "@typescript-eslint/parser": "^4.29.3",
+    "eslint": "7",
+    "eslint-config-airbnb": "18.2.1",
+    "eslint-config-airbnb-typescript": "^15.0.0",
+    "eslint-plugin-import": "^2.22.1",
+    "eslint-plugin-jsx-a11y": "^6.4.1",
+    "eslint-plugin-react": "^7.21.5",
+    "eslint-plugin-react-hooks": "^1.7.0",
+    "ts-node": "^10.4.0",
+    "typescript": "^4.4.4"
+  },
+  "scripts": {
+    "start": "yarn build && node ./dist/index.js",
+    "build": "tsc",
+    "lint": "eslint ./src --ext .js,.jsx,.ts,.tsx"
+  },
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "yargs": "^17.2.1"
+  }
+}
