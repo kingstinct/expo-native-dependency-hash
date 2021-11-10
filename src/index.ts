@@ -290,17 +290,18 @@ void yargs(hideBin(process.argv))
       const propName = 'build';
       const prev = await readFile(easJsonPath, 'utf8');
       const prevJson = JSON.parse(prev) as { version: string };
+      console.info(`Updating "${easJsonPath}"`);
       Object.keys(prevJson[propName]).forEach((key) => {
         const prevReleaseChannel = (prevJson[propName][key] as { releaseChannel: string }).releaseChannel; // eslint-disable-line
 
         (prevJson[propName][key] as {releaseChannel: string}).releaseChannel = hash; // eslint-disable-line
 
         if (!prevReleaseChannel) {
-          console.info(green(`Saving to "${easJsonPath}"; profile ${key}`));
+          console.info(green(`Saving for profile ${key}`));
         } else if (prevReleaseChannel !== hash) {
-          console.warn(yellow(`Updating "${easJsonPath}"; profile ${key} (was ${prevReleaseChannel})`));
+          console.warn(yellow(`Updating for profile ${key} (was ${prevReleaseChannel})`));
         } else {
-          console.warn(green(`Up to date: "${easJsonPath}"; profile ${key}`));
+          console.warn(green(`Up to date; profile ${key}`));
         }
       });
       await writeFile(easJsonPath, `${JSON.stringify(prevJson, null, 2)}\n`);
@@ -326,8 +327,8 @@ void yargs(hideBin(process.argv))
       }
     }
 
-    if (!packageJsonPath && !filePath) {
-      console.log(yellow('Nothing saved, use --file or --package-json to specify where you want to save the hash'));
+    if (!packageJsonPath && !filePath && !easJsonPath) {
+      console.log(yellow('Nothing saved, use --file or --package-json or --eas to specify where you want to save the hash'));
     }
   }).command('list [rootDir]', 'Lists all native dependencies', (y) => y
     .positional('rootDir', {

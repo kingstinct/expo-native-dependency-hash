@@ -32,7 +32,32 @@ expo publish --release-channel `cat .rn-native-hashrc`
 ```
 
 ### Generate a new Native Client when native dependencies has changed
-Generate new native builds automatically when it's needed.
+Generate new native builds automatically when it's needed. 
 
-## Native Module Detection
-We detect native modules by looking for `ios` and/or `android` folders in each package. Please post an issue (PRs are welcome :) for any false positives/negatives you might find!
+A simple example of how it can be done with GitHub Actions and EAS Build:
+```yml
+      - name: Get Hash
+        run: echo "HASH=`npx rn-native-hash hash`" >> $GITHUB_ENV
+
+      # Check if there has exists a build for this native hash
+      - name: Matching Native Builds
+        run: echo "MATCHING_BUILDS=`npx eas-cli@latest build:list --status=finished | grep -c $HASH`" >> $GITHUB_ENV
+
+      # Publish bundle if there is already a Native Build for this hash out there:
+      - name: Expo Publish
+        id: expo-publish
+        if: ${{ env.MATCHING_BUILDS > 0 }}
+        run: expo publish --release-channel=`rn-native-hash hash`
+
+      # Build new Native Client if there are no
+      - name: EAS Build
+        id: eas-build
+        if: ${{ env.MATCHING_BUILDS == 0 }}
+        run: npx eas-cli@latest build --platform all --non-interactive --no-wait
+```
+* There are obviously edge cases in this simple implementation; we could check per platform and for builds that are in progress so we don't build duplicates etc..
+
+This example works best when running `rn-native-hash generate -e` on postinstall - since that will keep the releaseChannels updated in `eas.json`.
+
+## How we detect Native Modules
+We detect native modules by looking for `ios` and/or `android` folders in each package. Please post an issue (PRs are welcome :) for any false positives/negatives you might find! To see whether everything looks right you can use `rn-native-hash list` for a full list of libraries that we detect as being native.
