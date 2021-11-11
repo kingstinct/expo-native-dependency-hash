@@ -61,3 +61,5 @@ This example works best when running `rn-native-hash generate -e` on postinstall
 
 ## How we detect Native Modules
 We detect native modules by looking for `ios` and/or `android` folders in each package. Please post an issue (PRs are welcome :) for any false positives/negatives you might find! To see whether everything looks right you can use `rn-native-hash list` for a full list of libraries that we detect as being native.
+
+If there is an `app.json` present its contents will also be included in the generated hash. By default web as well as versionCode/buildNumber is ignored. versionCode/buildNumber can be included with --includeBuildNumber flag.
