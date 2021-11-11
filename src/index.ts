@@ -123,6 +123,7 @@ const getCurrentHash = async (rootDir = '.', verbose: boolean, list = false, qui
 const DEFAULT_FILE = '.rn-native-hashrc';
 const DEFAULT_PACKAGE_JSON = 'package.json';
 const DEFAULT_PACKAGE_JSON_PROPERTY = 'rn-native-hash';
+const DEFAULT_EAS_JSON_PATH = 'eas.json';
 
 function absoluteOrRelativePath(path: string) {
   return path.startsWith('/') ? path : join(process.cwd(), path);
@@ -171,6 +172,12 @@ void yargs(hideBin(process.argv))
       default: DEFAULT_FILE,
       description: 'Read hash from file',
     })
+    .option('eas', {
+      alias: 'e',
+      type: 'string',
+      description: 'Write hash to eas.json',
+      default: DEFAULT_EAS_JSON_PATH,
+    })
     .option('package-json', {
       alias: 'p',
       type: 'string',
@@ -184,6 +191,7 @@ void yargs(hideBin(process.argv))
 
     const rootDir = absoluteOrRelativePath(argv.rootDir);
     const filePath = pathFromArg(argv, ['file', 'f'], rootDir, DEFAULT_FILE);
+    const easJsonPath = pathFromArg(argv, ['eas', 'e'], rootDir, DEFAULT_EAS_JSON_PATH);
     const packageJsonPath = pathFromArg(argv, ['package-json', 'p'], rootDir, DEFAULT_PACKAGE_JSON);
     if (verbose) console.info(`getting depenency hash for native dependencies in: ${rootDir}`);
     const hash = await getCurrentHash(rootDir, verbose, false);
@@ -215,15 +223,41 @@ void yargs(hideBin(process.argv))
       }
     }
 
+    if (easJsonPath) {
+      try {
+        const propName = 'build';
+        const prev = await readFile(easJsonPath, 'utf8');
+        const prevJson = JSON.parse(prev) as { version: string };
+
+        Object.keys(prevJson[propName]).forEach((key) => {
+          const prevReleaseChannel = (prevJson[propName][key] as { releaseChannel: string }).releaseChannel; // eslint-disable-line
+
+          (prevJson[propName][key] as {releaseChannel: string}).releaseChannel = hash; // eslint-disable-line
+
+          if (prevReleaseChannel) {
+            valueExists = true;
+            if (prevReleaseChannel !== hash) {
+              hasChanged = true;
+              console.warn(yellow(`Updating for profile ${key} (was ${prevReleaseChannel})`));
+            }
+          }
+        });
+      } catch (e) {
+        if (verbose) {
+          console.error(e);
+        }
+      }
+    }
+
     if (!valueExists) {
       console.error(red('Use "rn-native-hash generate" to create a new hash. No previous hash found, looked in:'));
-      console.error(`${filePath as string}\n${packageJsonPath as string}`);
+      console.error(`${filePath as string}\n${packageJsonPath as string}\n${easJsonPath as string}`);
       process.exit(1);
     } else if (hasChanged) {
       console.error(red('hash has changed'));
       process.exit(1);
     } else {
-      console.log(green('hash has not changed'));
+      console.log(green('rn-native-hash up to date'));
     }
   })
   .command('generate [rootDir]', 'Generate hash representing native dependencies', (y) => y
@@ -251,7 +285,7 @@ void yargs(hideBin(process.argv))
       alias: 'e',
       type: 'string',
       description: 'Write hash to eas.json',
-      defaultDescription: DEFAULT_FILE,
+      defaultDescription: DEFAULT_EAS_JSON_PATH,
     })
     .option('package-json', {
       alias: 'p',
@@ -264,7 +298,7 @@ void yargs(hideBin(process.argv))
 
     const rootDir = absoluteOrRelativePath(argv.rootDir);
     const packageJsonPath = pathFromArg(argv, ['package-json', 'p'], rootDir, DEFAULT_PACKAGE_JSON);
-    const easJsonPath = pathFromArg(argv, ['eas', 'e'], rootDir, 'eas.json');
+    const easJsonPath = pathFromArg(argv, ['eas', 'e'], rootDir, DEFAULT_EAS_JSON_PATH);
     const filePath = pathFromArg(argv, ['file', 'f'], rootDir, DEFAULT_FILE, !packageJsonPath && !easJsonPath);
 
     if (verbose) {
