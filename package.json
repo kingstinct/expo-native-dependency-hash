@@ -26,6 +26,7 @@
   ],
   "devDependencies": {
     "@types/chalk": "^2.2.0",
+    "@types/jest": "^27.0.2",
     "@types/node": "^16.11.7",
     "@types/yargs": "^17.0.5",
     "@typescript-eslint/eslint-plugin": "^4.29.3",
@@ -37,14 +38,17 @@
     "eslint-plugin-jsx-a11y": "^6.4.1",
     "eslint-plugin-react": "^7.21.5",
     "eslint-plugin-react-hooks": "^1.7.0",
+    "jest": "^27.3.1",
+    "ts-jest": "^27.0.7",
     "ts-node": "^10.4.0",
     "typescript": "^4.4.4"
   },
   "scripts": {
     "start": "yarn build && node ./dist/index.js",
     "build": "tsc",
+    "test": "jest src",
     "lint": "eslint ./src --ext .js,.jsx,.ts,.tsx",
-    "prepublish": "yarn build && yarn lint"
+    "prepublish": "yarn build && yarn lint && yarn test"
   },
   "dependencies": {
     "chalk": "^4.1.2",

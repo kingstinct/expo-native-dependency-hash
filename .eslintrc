@@ -8,6 +8,7 @@
     "rules": {
         "prefer-template": "error",
         "no-void": "off",
+        "@typescript-eslint/explicit-module-boundary-types": 0  
     },
     "parserOptions": {
         "project": "./tsconfig.json"
