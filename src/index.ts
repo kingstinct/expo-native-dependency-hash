@@ -206,21 +206,23 @@ export async function generate(
     const prev = await readFile(easJsonPath, 'utf8');
     const prevJson = JSON.parse(prev) as { version: string; };
     console.info(`Updating "${easJsonPath}"`);
-    Object.keys(prevJson[propName]).forEach((key) => {
-      const prevReleaseChannel = (prevJson[propName][key] as { releaseChannel: string; }).releaseChannel; // eslint-disable-line
+    Object.keys(prevJson[propName]).forEach((buildProfile) => {
+      const prevReleaseChannel = (prevJson[propName][buildProfile] as { releaseChannel: string; }).releaseChannel; // eslint-disable-line
 
-      (prevJson[propName][key] as { releaseChannel: string; }).releaseChannel = hash; // eslint-disable-line
+      const newReleaseChannel = `${hash}-${buildProfile}`;
+      (prevJson[propName][buildProfile] as { releaseChannel: string; }).releaseChannel = newReleaseChannel; // eslint-disable-line
 
       if (!prevReleaseChannel) {
-        console.info(green(`Saving for profile ${key}`));
-      } else if (prevReleaseChannel !== hash) {
-        console.warn(yellow(`Updating for profile ${key} (was ${prevReleaseChannel})`));
+        console.info(green(`Saving for profile ${buildProfile}`));
+      } else if (prevReleaseChannel !== newReleaseChannel) {
+        console.warn(yellow(`Updating for profile ${buildProfile} (was ${prevReleaseChannel})`));
       } else {
-        console.warn(green(`Up to date; profile ${key}`));
+        console.warn(green(`Up to date; profile ${buildProfile}`));
       }
     });
     await writeFile(easJsonPath, `${JSON.stringify(prevJson, null, 2)}\n`);
   }
+
   if (packageJsonPath) {
     const prev = await readFile(packageJsonPath, 'utf8');
     const prevJson = JSON.parse(prev) as { version: string; };
@@ -330,16 +332,17 @@ export async function verify(
       const prev = await readFile(easJsonPath, 'utf8');
       const prevJson = JSON.parse(prev) as { version: string; };
 
-      Object.keys(prevJson[propName]).forEach((key) => {
-        const prevReleaseChannel = (prevJson[propName][key] as { releaseChannel: string; }).releaseChannel; // eslint-disable-line
+      Object.keys(prevJson[propName]).forEach((buildProfile) => {
+        const prevReleaseChannel = (prevJson[propName][buildProfile] as { releaseChannel: string; }).releaseChannel; // eslint-disable-line
 
-        (prevJson[propName][key] as { releaseChannel: string; }).releaseChannel = hash; // eslint-disable-line
+        const newReleaseChannel = `${hash}-${buildProfile}`;
+        (prevJson[propName][buildProfile] as { releaseChannel: string; }).releaseChannel = newReleaseChannel; // eslint-disable-line
 
         if (prevReleaseChannel) {
           valueExists = true;
-          if (prevReleaseChannel !== hash) {
+          if (prevReleaseChannel !== newReleaseChannel) {
             hasChanged = true;
-            console.warn(yellow(`Hash for profile ${key} changed (was ${prevReleaseChannel})`));
+            console.warn(yellow(`Hash for profile ${buildProfile} changed (was ${prevReleaseChannel})`));
           }
         }
       });
