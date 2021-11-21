@@ -168,6 +168,14 @@ export const getCurrentHash = async (rootDir = '.', verbose: boolean, includeBui
 
   return hash;
 };
+
+type BuildProfile = {
+  releaseChannel: string;
+  cache?: {
+    key?: string
+  }
+};
+
 export async function generate(
   {
     rootDir,
@@ -204,13 +212,16 @@ export async function generate(
   if (easJsonPath) {
     const propName = 'build';
     const prev = await readFile(easJsonPath, 'utf8');
-    const prevJson = JSON.parse(prev) as { version: string; };
+    const prevJson = JSON.parse(prev) as { version: string; build: Record<string, BuildProfile> };
     console.info(`Updating "${easJsonPath}"`);
     Object.keys(prevJson[propName]).forEach((buildProfile) => {
-      const prevReleaseChannel = (prevJson[propName][buildProfile] as { releaseChannel: string; }).releaseChannel; // eslint-disable-line
+      const prevReleaseChannel = (prevJson[propName][buildProfile]).releaseChannel;
 
       const newReleaseChannel = `${hash}-${buildProfile}`;
-      (prevJson[propName][buildProfile] as { releaseChannel: string; }).releaseChannel = newReleaseChannel; // eslint-disable-line
+      (prevJson[propName][buildProfile]).releaseChannel = newReleaseChannel;
+      if (prevJson[propName][buildProfile].cache?.key) {
+        prevJson[propName][buildProfile].cache!.key = newReleaseChannel;
+      }
 
       if (!prevReleaseChannel) {
         console.info(green(`Saving for profile ${buildProfile}`));
@@ -330,13 +341,13 @@ export async function verify(
     try {
       const propName = 'build';
       const prev = await readFile(easJsonPath, 'utf8');
-      const prevJson = JSON.parse(prev) as { version: string; };
+      const prevJson = JSON.parse(prev) as { version: string; build: Record<string, BuildProfile> };
 
       Object.keys(prevJson[propName]).forEach((buildProfile) => {
-        const prevReleaseChannel = (prevJson[propName][buildProfile] as { releaseChannel: string; }).releaseChannel; // eslint-disable-line
+        const prevReleaseChannel = prevJson[propName][buildProfile].releaseChannel;
 
         const newReleaseChannel = `${hash}-${buildProfile}`;
-        (prevJson[propName][buildProfile] as { releaseChannel: string; }).releaseChannel = newReleaseChannel; // eslint-disable-line
+        (prevJson[propName][buildProfile]).releaseChannel = newReleaseChannel;
 
         if (prevReleaseChannel) {
           valueExists = true;
