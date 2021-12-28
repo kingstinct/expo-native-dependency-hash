@@ -7,3 +7,5 @@ index.d.ts
 index.js
 index.test.d.ts
 index.test.js
+cli.d.ts
+cli.js

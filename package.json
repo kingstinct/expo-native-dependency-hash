@@ -19,11 +19,12 @@
     "url": "https://github.com/robertherber/rn-native-hash/issues"
   },
   "bin": {
-    "rn-native-hash": "index.js"
+    "rn-native-hash": "cli.js"
   },
   "files": [
     "index.js",
-    "index.d.ts"
+    "index.d.ts",
+    "cli.js"
   ],
   "devDependencies": {
     "@types/jest": "^27.0.2",
