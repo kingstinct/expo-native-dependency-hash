@@ -2,3 +2,8 @@
 dist
 *.log
 .rn-native-hashrc
+
+index.d.ts
+index.js
+index.test.d.ts
+index.test.js

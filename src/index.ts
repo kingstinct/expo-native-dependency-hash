@@ -122,7 +122,7 @@ export const getModules = async (rootDir = '.') => {
   }
 };
 
-export const getCurrentHash = async (rootDir = '.', verbose: boolean, includeBuildNumbers = false) => {
+export const getCurrentHash = async (rootDir = '.', verbose = false, includeBuildNumbers = false) => {
   const appJsonPath = `${rootDir}/app.json`;
 
   let appJsonContent = '';

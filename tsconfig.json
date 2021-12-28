@@ -1,8 +1,15 @@
 {
+    "include": [
+        "./src/**/*.ts"
+    ],
+    "exclude": [
+        
+    ],
     "compilerOptions": {
-        "outDir": "dist",
+        "outDir": ".",
         "strictNullChecks": true,
         "target": "ES2017",
-        "module": "commonjs"
+        "module": "commonjs",
+        "declaration": true
     }
 }

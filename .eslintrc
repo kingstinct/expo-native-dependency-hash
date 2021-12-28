@@ -1,12 +1,13 @@
 {
     "extends": [
-        "airbnb",
-        "airbnb-typescript",
+        "airbnb-base",
+        "airbnb-typescript/base",
         "plugin:@typescript-eslint/recommended",
         "plugin:@typescript-eslint/recommended-requiring-type-checking"
     ],
     "rules": {
         "prefer-template": "error",
+        "no-console": "off",
         "no-void": "off",
         "@typescript-eslint/explicit-module-boundary-types": 0  
     },
