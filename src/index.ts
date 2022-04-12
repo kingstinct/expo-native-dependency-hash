@@ -63,6 +63,7 @@ export const getHashFromPackage = async (
 
 type ExpoAppJson = {
   expo: {
+    version: string | undefined,
     ios: {
       buildNumber: string | undefined
     } | undefined,
@@ -119,7 +120,7 @@ export const getModules = async (rootDir = '.') => {
   }
 };
 
-export const getCurrentHash = async (rootDir = '.', verbose = false, includeBuildNumbers = false) => {
+export const getCurrentHash = async (rootDir = '.', verbose = false, includeBuildNumbers = false, includeVersionNumber = false) => {
   const appJsonPath = `${rootDir}/app.json`;
 
   let appJsonContent = '';
@@ -139,6 +140,10 @@ export const getCurrentHash = async (rootDir = '.', verbose = false, includeBuil
     if (!includeBuildNumbers) {
       delete appJson.expo.ios?.buildNumber;
       delete appJson.expo.android?.versionCode;
+    }
+
+    if (!includeVersionNumber) {
+      delete appJson.expo.version;
     }
 
     appJsonContent = JSON.stringify(appJson);
@@ -181,6 +186,7 @@ export async function generate(
     packageJsonPath,
     packageJsonProperty,
     includeBuildNumbers,
+    includeVersionNumber,
   }: {
     rootDir: string;
     verbose: boolean;
@@ -189,9 +195,10 @@ export async function generate(
     packageJsonPath: string | null;
     packageJsonProperty: string;
     includeBuildNumbers: boolean;
+    includeVersionNumber: boolean;
   },
 ) {
-  const hash = await getCurrentHash(rootDir, verbose, includeBuildNumbers);
+  const hash = await getCurrentHash(rootDir, verbose, includeBuildNumbers, includeVersionNumber);
   console.log(bold(`rn-native-hash: ${hash}`));
 
   if (filePath) {
@@ -265,6 +272,7 @@ export async function verify(
     easJsonPath,
     packageJsonProp,
     includeBuildNumbers,
+    includeVersionNumber,
   }: {
     verbose: boolean;
     rootDir: string;
@@ -272,10 +280,12 @@ export async function verify(
     packageJsonPath: string | null;
     easJsonPath: string | null;
     packageJsonProp: string;
-    includeBuildNumbers: boolean; },
+    includeBuildNumbers: boolean;
+    includeVersionNumber: boolean;
+  },
 ) {
   if (verbose) { console.info(`getting depenency hash for native dependencies in: ${rootDir}`); }
-  const hash = await getCurrentHash(rootDir, verbose, includeBuildNumbers);
+  const hash = await getCurrentHash(rootDir, verbose, includeBuildNumbers, includeVersionNumber);
   console.log(bold(`rn-native-hash: ${hash}`));
   let valueExists = false;
   let hasChanged = false;

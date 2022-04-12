@@ -67,6 +67,10 @@ void yargs(hideBin(process.argv))
       type: 'boolean',
       description: 'Include buildNumber/versionCode in the hash',
     })
+    .option('includeVersionNumber', {
+      type: 'boolean',
+      description: 'Include versionNumber in the hash',
+    })
     .option('eas', {
       alias: 'e',
       type: 'string',
@@ -99,6 +103,7 @@ void yargs(hideBin(process.argv))
         easJsonPath,
         packageJsonProp,
         includeBuildNumbers: !!argv.includeBuildNumbers,
+        includeVersionNumber: !!argv.includeVersionNumber,
       },
     );
   })
@@ -126,6 +131,10 @@ void yargs(hideBin(process.argv))
       type: 'string',
       description: 'Write hash to file',
       defaultDescription: DEFAULT_FILE,
+    })
+    .option('includeVersionNumber', {
+      type: 'boolean',
+      description: 'Include versionNumber in the hash',
     })
     .option('eas', {
       alias: 'e',
@@ -162,6 +171,7 @@ void yargs(hideBin(process.argv))
         packageJsonPath,
         packageJsonProperty,
         includeBuildNumbers: !!argv.includeBuildNumbers,
+        includeVersionNumber: !!argv.includeVersionNumber,
       },
     );
   }).command('list [rootDir]', 'Lists all native dependencies', (y) => y
@@ -187,7 +197,13 @@ void yargs(hideBin(process.argv))
     }
 
     if (verbose) console.info(`getting depenency hash for native dependencies in: ${rootDir}`);
-    const hash = await getCurrentHash(rootDir, verbose, argv.includeBuildNumbers);
+    const hash = await getCurrentHash(
+      rootDir,
+      verbose,
+      !!argv.includeBuildNumbers,
+      !!argv.includeVersionNumber,
+    );
+
     console.log(bold(`rn-native-hash: ${hash}`));
     const allModules = await getModules(rootDir);
     const nativeModules = allModules.filter((m) => m.isNative);
@@ -215,7 +231,12 @@ void yargs(hideBin(process.argv))
     }
 
     if (verbose) console.info(`getting depenency hash for native dependencies in: ${rootDir}`);
-    const hash = await getCurrentHash(rootDir, verbose, argv.includeBuildNumbers);
+    const hash = await getCurrentHash(
+      rootDir,
+      verbose,
+      !!argv.includeBuildNumbers,
+      !!argv.includeVersionNumber,
+    );
     process.stdout.write(hash);
   })
   .recommendCommands()
