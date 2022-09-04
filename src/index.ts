@@ -239,10 +239,6 @@ const getAppJsonHash = (platform = Platform.all, rootDir = '.', verbose = false)
   try {
     const appJson = readExpoConfig(rootDir);
 
-    if (verbose) {
-      console.log('found app.json, including it in hash');
-    }
-
     deletePropsFromAppJson.forEach((prop) => {
       delete appJson[prop];
     });
@@ -299,8 +295,8 @@ export const getCurrentHash = async (platform: Platform, {
   const nativeModules = skipNodeModules ? [] : await getModulesForPlatform(platform, rootDir);
 
   const nativeModuleIdentities = nativeModules.map(getModuleIdentity(platform));
-  if (verbose) {
-    console.log(`Found ${nativeModules.length} native modules (out of ${nativeModules.length} total modules):\n${nativeModuleIdentities.join('\n')}`);
+  if (verbose && !skipNodeModules) {
+    console.log(`Found ${nativeModules.length} native modules (out of ${nativeModules.length} total modules)\n${nativeModuleIdentities.join('\n')}`);
   }
   const stringToHashFrom = `app.json@${appJsonContent};local@${localNativeFoldersHash};${nativeModuleIdentities.join(',')}`;
 
@@ -320,7 +316,9 @@ const generateHashes = async (opts: GenerateHashOptions = GENERATE_HASH_DEFAULTS
     getCurrentHash(Platform.all, opts),
   ]);
 
-  console.log(`${bold('[rn-native-hash]')}\n${ios} (ios)\n${android} (android)\n${all} (all)`);
+  if (opts.verbose) {
+    console.log(`${bold('[rn-native-hash]')}\n${ios} (ios)\n${android} (android)\n${all} (all)`);
+  }
 
   return {
     ios,
@@ -328,53 +326,6 @@ const generateHashes = async (opts: GenerateHashOptions = GENERATE_HASH_DEFAULTS
     all,
   };
 };
-
-export async function updateExpoApp(
-  {
-    rootDir,
-    verbose,
-  }: {
-    rootDir: string;
-    verbose: boolean;
-  },
-) {
-  const { ios, android, all } = await generateHashes({ rootDir, verbose });
-
-  try {
-    const fileStr = readFileSync(Path.join(rootDir, 'app.json'), 'utf8');
-    const prevJson = JSON.parse(fileStr) as ExpoAppJson;
-
-    prevJson.expo.runtimeVersion = all;
-    prevJson.expo.ios = { ...prevJson.expo.ios, runtimeVersion: ios };
-    prevJson.expo.android = { ...prevJson.expo.android, runtimeVersion: android };
-
-    await writeFile(Path.join(rootDir, 'app.json'), `${JSON.stringify(prevJson, null, 2)}\n`);
-  } catch (e) {
-    console.error(red('Failed to update app.json'), e);
-  }
-}
-
-export async function updateLibrary(
-  {
-    rootDir,
-    verbose,
-  }: {
-    rootDir: string;
-    verbose: boolean;
-  },
-) {
-  const { ios, android, all } = await generateHashes({ rootDir, verbose, skipNodeModules: true });
-  const prevJson = await readPackageJson(rootDir);
-
-  prevJson.rnNativeHash = {
-    ...prevJson.rnNativeHash,
-    ios,
-    android,
-    all,
-  };
-
-  await writeFile(Path.join(rootDir, 'package.json'), `${JSON.stringify(prevJson, null, 2)}\n`);
-}
 
 export async function verifyExpoApp(
   {
@@ -420,14 +371,40 @@ export async function verifyExpoApp(
     }
   }
 
-  if (!valueExists) {
-    console.error(red('No previous hash found, looked in Expo Config. Use "rn-native-hash generate" to create a new hash.'));
-    process.exit(1);
-  } else if (hasChanged) {
-    console.error(red('hash has changed'));
-    process.exit(1);
-  } else {
-    console.log(green('rn-native-hash up to date'));
+  return { valueExists, hasChanged };
+}
+
+export async function updateExpoApp(
+  {
+    rootDir,
+    verbose,
+  }: {
+    rootDir: string;
+    verbose: boolean;
+  },
+) {
+  const { hasChanged, valueExists } = await verifyExpoApp({ rootDir, verbose });
+
+  if (!hasChanged && valueExists) {
+    console.log(green('Hash already up to date'));
+    return;
+  }
+
+  const { ios, android, all } = await generateHashes({ rootDir, verbose });
+
+  try {
+    const fileStr = readFileSync(Path.join(rootDir, 'app.json'), 'utf8');
+    const prevJson = JSON.parse(fileStr) as ExpoAppJson;
+
+    prevJson.expo.runtimeVersion = all;
+    prevJson.expo.ios = { ...prevJson.expo.ios, runtimeVersion: ios };
+    prevJson.expo.android = { ...prevJson.expo.android, runtimeVersion: android };
+
+    await writeFile(Path.join(rootDir, 'app.json'), `${JSON.stringify(prevJson, null, 2)}\n`);
+
+    console.log(yellow('Hashes where updated'));
+  } catch (e) {
+    console.error(red('Failed to update app.json'), e);
   }
 }
 
@@ -478,4 +455,35 @@ export async function verifyLibrary(
   }
 
   return { valueExists, hasChanged };
+}
+
+export async function updateLibrary(
+  {
+    rootDir,
+    verbose,
+  }: {
+    rootDir: string;
+    verbose: boolean;
+  },
+) {
+  const prev = await verifyLibrary({ rootDir, verbose });
+
+  if (prev.valueExists && !prev.hasChanged) {
+    console.info(green('Hashes already up to date'));
+    return;
+  }
+
+  const { ios, android, all } = await generateHashes({ rootDir, verbose, skipNodeModules: true });
+  const prevJson = await readPackageJson(rootDir);
+
+  prevJson.rnNativeHash = {
+    ...prevJson.rnNativeHash,
+    ios,
+    android,
+    all,
+  };
+
+  await writeFile(Path.join(rootDir, 'package.json'), `${JSON.stringify(prevJson, null, 2)}\n`);
+
+  console.info(yellow('Hashes updated'));
 }

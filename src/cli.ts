@@ -19,7 +19,8 @@ function absoluteOrRelativePath(path: string) {
 
 const throwIfGitDirty = () => {
   if (isGitDirty('.')) {
-    throw new Error('Git is dirty. Please commit or stash your changes before running this command.');
+    console.error(red('[rn-native-hash] Git working copy is dirty. Please commit or stash your changes before running this command.'));
+    process.exit(1);
   }
 };
 // function pathFromArg<T extends Record<string, any> = Record<string, any>>(
@@ -68,12 +69,22 @@ void yargs(hideBin(process.argv))
 
       const rootDir = absoluteOrRelativePath(argv.rootDir);
 
-      await verifyExpoApp(
+      const { hasChanged, valueExists } = await verifyExpoApp(
         {
           verbose,
           rootDir,
         },
       );
+
+      if (!valueExists) {
+        console.error(red('[rn-native-hash] No previous hash found, looked in Expo Config. Use "rn-native-hash generate" to create a new hash.'));
+        process.exit(1);
+      } else if (hasChanged) {
+        console.error(red('[rn-native-hash] hash has changed'));
+        process.exit(1);
+      } else {
+        console.log(green('[rn-native-hash] Hash up to date'));
+      }
     },
   )
   .command(
@@ -109,13 +120,13 @@ void yargs(hideBin(process.argv))
       );
 
       if (!valueExists) {
-        console.error(red('No previous hash found, looked in package.json. Use "rn-native-hash update-library" to create a new hash'));
+        console.error(red('[rn-native-hash] No previous hash found, looked in package.json. Use "rn-native-hash update-library" to create a new hash'));
         process.exit(1);
       } else if (hasChanged) {
-        console.error(red('hash has changed'));
+        console.error(red('[rn-native-hash] Hash has changed'));
         process.exit(1);
       } else {
-        console.log(green('rn-native-hash up to date'));
+        console.log(green('[rn-native-hash] Hash up to date'));
       }
     },
   )
@@ -195,8 +206,14 @@ void yargs(hideBin(process.argv))
       alias: 'v',
       type: 'boolean',
       description: 'Run with verbose logging',
+    })
+    .option('skipNodeModules', {
+      type: 'boolean',
+      default: false,
+      description: 'Skip including node_modules, useful for libraries',
     }), async (argv) => {
     const verbose = argv.verbose || argv.v as boolean || false;
+    const skipNodeModules = argv.skipNodeModules || false;
     const platform = argv.platform as Platform || argv.p as Platform || Platform.all;
 
     throwIfGitDirty();
@@ -211,6 +228,7 @@ void yargs(hideBin(process.argv))
     const hash = await getCurrentHash(platform, {
       rootDir,
       verbose,
+      skipNodeModules,
     });
     process.stdout.write(hash);
   })

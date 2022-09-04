@@ -43,7 +43,7 @@
   },
   "scripts": {
     "start": "yarn build && node ./dist/index.js",
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "test": "jest src",
     "lint": "eslint ./src --ext .js,.jsx,.ts,.tsx",
     "prepublish": "yarn build && yarn lint && yarn test"
