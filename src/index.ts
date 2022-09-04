@@ -1,29 +1,105 @@
 #!/usr/bin/env node
 
-import { readdir, readFile, writeFile } from 'fs/promises';
+import {
+  readdir, readFile, writeFile,
+} from 'fs/promises';
 import { createHash } from 'crypto';
 import {
   red, green, yellow, bold,
 } from 'chalk';
+import { execSync } from 'child_process';
+import * as Path from 'node:path';
+import stableStringify from 'fast-safe-stringify';
+import { readFileSync } from 'fs';
 
-type Module = {
+export type Module = {
   name: string,
   path: string,
   version: string,
-  isNative: boolean
+  isNativeAndroid: boolean,
+  isNativeIOS: boolean,
+  rnNativeHash?: {
+    ios?: string,
+    android?: string,
+    all?: string
+  }
 };
 
-export const getModuleIdentity = (m: Module) => `${m.name}@${m.version}`;
+export enum Platform {
+  android = 'android',
+  ios = 'ios',
+  all = 'all',
+}
 
-export const hasNativeVersion = async (path: string) => {
-  const parts = await readdir(path);
-  return parts.includes('ios') || parts.includes('android');
+export const getModuleIdentity = (platform: Platform) => (m: Module) => {
+  if (platform === Platform.all && m.rnNativeHash?.all) {
+    return `${m.name}@${m.rnNativeHash.all}`;
+  }
+
+  if (platform === Platform.ios && m.rnNativeHash?.ios) {
+    return `${m.name}@${m.rnNativeHash.ios}`;
+  }
+
+  if (platform === Platform.android && m.rnNativeHash?.android) {
+    return `${m.name}@${m.rnNativeHash.android}`;
+  }
+
+  return `${m.name}@${m.version}`;
 };
 
-export const getVersion = async (path: string) => {
-  const pkg = await readFile(`${path}/package.json`, 'utf8');
-  const pkgJson = JSON.parse(pkg) as { version: string };
-  return pkgJson.version;
+export const hasNativeVersion = async (platform: Platform, path: string) => {
+  const subDirs = await readdir(path);
+  if (platform === Platform.ios) {
+    return subDirs.includes('ios');
+  }
+  if (platform === Platform.android) {
+    return subDirs.includes('android');
+  }
+  return subDirs.includes('ios') || subDirs.includes('android');
+};
+
+export const readPackageJson = async (path: string) => {
+  const pkg = await readFile(Path.join(path, 'package.json'), 'utf8');
+  const pkgJson = JSON.parse(pkg) as {
+    version: string,
+    rnNativeHash?: Module['rnNativeHash']
+  };
+  return pkgJson;
+};
+
+const hashIt = (str: string) => createHash('md5').update(str).digest('hex');
+
+export const hashFiles = async (rootDir: string, relativeFilePaths: string[], verbose = false) => {
+  const nativeFilesHashes = await Promise.all(relativeFilePaths.map(async (filePath) => {
+    const fileContents = await readFile(Path.join(rootDir, filePath), 'utf8');
+    return `${filePath}@${hashIt(fileContents)}`;
+  }));
+
+  if (verbose && nativeFilesHashes.length > 0) {
+    console.log('native files with hashes: ', nativeFilesHashes.join('\n'));
+  }
+
+  return hashIt(nativeFilesHashes.join(','));
+};
+
+export const isGitDirty = (rootDir: string) => {
+  const gitDiffOutput = execSync('git diff HEAD', { cwd: rootDir, encoding: 'utf8' }).toString();
+  return gitDiffOutput.length > 0;
+};
+
+export const getFolderHash = async (platform: Platform, rootDir: string, verbose = false) => {
+  const gitFiles = execSync('git ls-tree -r HEAD --name-only', { cwd: rootDir, encoding: 'utf8', env: process.env });
+
+  const nativeFiles = gitFiles
+    .split('\n')
+    .filter((f) => {
+      const includeBecauseIos = platform !== Platform.android && (f.startsWith('ios') || f.endsWith('.podspec'));
+      const includeBecauseAndroid = platform !== Platform.ios && f.startsWith('android');
+
+      return includeBecauseIos || includeBecauseAndroid;
+    });
+
+  return hashFiles(rootDir, nativeFiles, verbose);
 };
 
 export const getHashFromFile = async (filePath: string, verbose: boolean) => {
@@ -63,20 +139,32 @@ export const getHashFromPackage = async (
 
 type ExpoAppJson = {
   expo: {
+    runtimeVersion?: string,
     version: string | undefined,
-    ios: {
-      buildNumber: string | undefined
+    ios?: {
+      buildNumber?: string | undefined,
+      runtimeVersion?: string | undefined,
     } | undefined,
-    android: {
-      versionCode: string | undefined
+    android?: {
+      versionCode?: string | undefined,
+      runtimeVersion?: string | undefined,
     } | undefined
   }
 };
 
-const deletePropsFromAppJson = ['web', 'owner', 'description'];
+const deletePropsFromAppJson = [
+  'web',
+  'owner',
+  'description',
+  'privacy',
+  'version',
+  'githubUrl',
+  'hooks',
+  'runtimeVersion',
+];
 
 export const getModules = async (rootDir = '.') => {
-  const dir = `${rootDir}/node_modules`;
+  const dir = Path.join(rootDir, 'node_modules');
 
   try {
     const modules = await readdir(dir);
@@ -86,26 +174,33 @@ export const getModules = async (rootDir = '.') => {
 
     const allModules = (await Promise.all(modules.map<Promise<Module[]>>(async (m) => {
       if (!m.startsWith('.')) {
+        const path = Path.join(dir, m);
         if (m.startsWith('@')) {
-          const submodules = await readdir(`${dir}/${m}`);
+          const submodules = await readdir(path);
           const allSubmodules = await Promise.all(submodules.map<Promise<Module>>(async (s) => {
-            const path = `${dir}/${m}/${s}`;
+            const pathToSubmodule = Path.join(dir, m, s);
+            const { version, rnNativeHash } = await readPackageJson(pathToSubmodule);
 
             return {
-              isNative: await hasNativeVersion(path),
+              isNativeAndroid: await hasNativeVersion(Platform.android, path),
+              isNativeIOS: await hasNativeVersion(Platform.ios, path),
               name: `${m}/${s}`,
-              path,
-              version: await getVersion(path),
+              path: pathToSubmodule,
+              version,
+              rnNativeHash,
             };
           }));
           return allSubmodules;
         }
-        const path = `${dir}/${m}`;
+        const { version, rnNativeHash } = await readPackageJson(path);
+
         return [{
-          isNative: await hasNativeVersion(path),
+          isNativeAndroid: await hasNativeVersion(Platform.android, path),
+          isNativeIOS: await hasNativeVersion(Platform.ios, path),
           name: m,
           path,
-          version: await getVersion(path),
+          version,
+          rnNativeHash,
         }] as Module[];
       }
       return [];
@@ -120,50 +215,97 @@ export const getModules = async (rootDir = '.') => {
   }
 };
 
-export const getCurrentHash = async (rootDir = '.', verbose = false, includeBuildNumbers = false, includeVersionNumber = false) => {
-  const appJsonPath = `${rootDir}/app.json`;
+export const readExpoConfig = (rootDir = '.') => {
+  const appJsonStr = execSync('npx expo config --json --full', { cwd: rootDir, encoding: 'utf-8', env: process.env });
+  const appJson = JSON.parse(appJsonStr) as { exp: ExpoAppJson['expo'] };
+  return appJson.exp;
+};
 
+const GENERATE_HASH_DEFAULTS: Required<GenerateHashOptions> = {
+  rootDir: '.',
+  skipNodeModules: false,
+  verbose: false,
+};
+
+type GenerateHashOptions = {
+  verbose?: boolean,
+  rootDir?: string,
+  skipNodeModules?: boolean,
+};
+
+const getAppJsonHash = (platform = Platform.all, rootDir = '.', verbose = false) => {
   let appJsonContent = '';
 
   try {
-    const appJsonStr = await readFile(appJsonPath, 'utf-8');
-    const appJson = JSON.parse(appJsonStr) as ExpoAppJson;
+    const appJson = readExpoConfig(rootDir);
 
     if (verbose) {
       console.log('found app.json, including it in hash');
     }
 
     deletePropsFromAppJson.forEach((prop) => {
-      delete appJson.expo[prop];
+      delete appJson[prop];
     });
 
-    if (!includeBuildNumbers) {
-      delete appJson.expo.ios?.buildNumber;
-      delete appJson.expo.android?.versionCode;
+    if (platform === Platform.ios) {
+      delete appJson.android;
+    } else {
+      delete appJson.android?.versionCode;
+      delete appJson.android?.runtimeVersion;
     }
 
-    if (!includeVersionNumber) {
-      delete appJson.expo.version;
+    if (platform === Platform.android) {
+      delete appJson.ios;
+    } else {
+      delete appJson.ios?.buildNumber;
+      delete appJson.ios?.runtimeVersion;
     }
 
-    appJsonContent = JSON.stringify(appJson);
+    const appJsonStr = stableStringify(appJson);
+    appJsonContent = hashIt(appJsonStr);
   } catch (e) {
     if (verbose) {
       console.log(e);
     }
   }
+  return appJsonContent;
+};
 
+export const getModulesForPlatform = async (platform = Platform.all, rootDir = '.') => {
   const allModules = await getModules(rootDir);
 
-  const nativeModules = allModules.filter((m) => m.isNative);
-  const nativeModuleIdentities = nativeModules.map(getModuleIdentity);
+  const nativeModules = allModules.filter((m) => {
+    if (platform === Platform.ios) {
+      return m.isNativeIOS;
+    }
+    if (platform === Platform.android) {
+      return m.isNativeAndroid;
+    }
+    return m.isNativeAndroid || m.isNativeIOS;
+  });
+
+  return nativeModules;
+};
+
+export const getCurrentHash = async (platform: Platform, {
+  rootDir = GENERATE_HASH_DEFAULTS.rootDir,
+  skipNodeModules = GENERATE_HASH_DEFAULTS.skipNodeModules,
+  verbose = GENERATE_HASH_DEFAULTS.verbose,
+}: GenerateHashOptions = GENERATE_HASH_DEFAULTS) => {
+  const localNativeFoldersHash = await getFolderHash(platform, rootDir, verbose);
+
+  const appJsonContent = getAppJsonHash(platform, rootDir, verbose);
+
+  const nativeModules = skipNodeModules ? [] : await getModulesForPlatform(platform, rootDir);
+
+  const nativeModuleIdentities = nativeModules.map(getModuleIdentity(platform));
   if (verbose) {
-    console.log(`Found ${nativeModules.length} native modules (${allModules.length} total):\n${nativeModuleIdentities.join('\n')}`);
+    console.log(`Found ${nativeModules.length} native modules (out of ${nativeModules.length} total modules):\n${nativeModuleIdentities.join('\n')}`);
   }
-  const stringToHashFrom = nativeModuleIdentities.join(',') + appJsonContent;
+  const stringToHashFrom = `app.json@${appJsonContent};local@${localNativeFoldersHash};${nativeModuleIdentities.join(',')}`;
 
   if (verbose) {
-    console.log(`Generating hash from string: ${stringToHashFrom}`);
+    console.log(`Generating hash from string:\n${stringToHashFrom}`);
   }
 
   const hash = createHash('md5').update(stringToHashFrom).digest('hex');
@@ -171,180 +313,115 @@ export const getCurrentHash = async (rootDir = '.', verbose = false, includeBuil
   return hash;
 };
 
-type BuildProfile = {
-  releaseChannel: string;
-  cache?: {
-    key?: string
-  }
+const generateHashes = async (opts: GenerateHashOptions = GENERATE_HASH_DEFAULTS) => {
+  const [ios, android, all] = await Promise.all([
+    getCurrentHash(Platform.ios, opts),
+    getCurrentHash(Platform.android, opts),
+    getCurrentHash(Platform.all, opts),
+  ]);
+
+  console.log(`${bold('[rn-native-hash]')}\n${ios} (ios)\n${android} (android)\n${all} (all)`);
+
+  return {
+    ios,
+    android,
+    all,
+  };
 };
 
-export async function generate(
+export async function updateExpoApp(
   {
     rootDir,
     verbose,
-    filePath, easJsonPath,
-    packageJsonPath,
-    packageJsonProperty,
-    includeBuildNumbers,
-    includeVersionNumber,
   }: {
     rootDir: string;
     verbose: boolean;
-    filePath: string | null;
-    easJsonPath: string | null;
-    packageJsonPath: string | null;
-    packageJsonProperty: string;
-    includeBuildNumbers: boolean;
-    includeVersionNumber: boolean;
   },
 ) {
-  const hash = await getCurrentHash(rootDir, verbose, includeBuildNumbers, includeVersionNumber);
-  console.log(bold(`rn-native-hash: ${hash}`));
+  const { ios, android, all } = await generateHashes({ rootDir, verbose });
 
-  if (filePath) {
-    const prevHash = await getHashFromFile(filePath, verbose);
-    if (!prevHash) {
-      console.info(green(`Saving to "${filePath}"`));
-      await writeFile(filePath, hash);
-    } else if (prevHash !== hash) {
-      console.warn(yellow(`Updating "${filePath}" (was ${prevHash})`));
-      await writeFile(filePath, hash);
-    } else {
-      console.warn(green(`Up to date: "${filePath}"`));
-    }
-  }
-  if (easJsonPath) {
-    const propName = 'build';
-    const prev = await readFile(easJsonPath, 'utf8');
-    const prevJson = JSON.parse(prev) as { version: string; build: Record<string, BuildProfile> };
-    console.info(`Updating "${easJsonPath}"`);
-    Object.keys(prevJson[propName]).forEach((buildProfile) => {
-      const prevReleaseChannel = (prevJson[propName][buildProfile]).releaseChannel;
+  try {
+    const fileStr = readFileSync(Path.join(rootDir, 'app.json'), 'utf8');
+    const prevJson = JSON.parse(fileStr) as ExpoAppJson;
 
-      const newReleaseChannel = `${hash}-${buildProfile}`;
-      (prevJson[propName][buildProfile]).releaseChannel = newReleaseChannel;
-      if (prevJson[propName][buildProfile].cache?.key) {
-        prevJson[propName][buildProfile].cache!.key = newReleaseChannel;
-      }
+    prevJson.expo.runtimeVersion = all;
+    prevJson.expo.ios = { ...prevJson.expo.ios, runtimeVersion: ios };
+    prevJson.expo.android = { ...prevJson.expo.android, runtimeVersion: android };
 
-      if (!prevReleaseChannel) {
-        console.info(green(`Saving for profile ${buildProfile}`));
-      } else if (prevReleaseChannel !== newReleaseChannel) {
-        console.warn(yellow(`Updating for profile ${buildProfile} (was ${prevReleaseChannel})`));
-      } else {
-        console.warn(green(`Up to date; profile ${buildProfile}`));
-      }
-    });
-    await writeFile(easJsonPath, `${JSON.stringify(prevJson, null, 2)}\n`);
-  }
-
-  if (packageJsonPath) {
-    const prev = await readFile(packageJsonPath, 'utf8');
-    const prevJson = JSON.parse(prev) as { version: string; };
-    if (!prevJson[packageJsonProperty]) {
-      console.info(green(`Saving to "${packageJsonPath}"`));
-      await writeFile(packageJsonPath, JSON.stringify({
-        ...prevJson,
-        [packageJsonProperty]: hash,
-      }, null, 2));
-    } else if (prevJson[packageJsonProperty] !== hash) {
-      console.warn(yellow(`Updating "${packageJsonPath}" (was ${prevJson[packageJsonProperty] as string})`));
-      await writeFile(packageJsonPath, JSON.stringify({
-        ...prevJson,
-        [packageJsonProperty]: hash,
-      }, null, 2));
-    } else {
-      console.warn(green(`Up to date: "${packageJsonPath}"`));
-    }
-  }
-
-  if (!packageJsonPath && !filePath && !easJsonPath) {
-    console.log(yellow('Nothing saved, use --file or --package-json or --eas to specify where you want to save the hash'));
+    await writeFile(Path.join(rootDir, 'app.json'), `${JSON.stringify(prevJson, null, 2)}\n`);
+  } catch (e) {
+    console.error(red('Failed to update app.json'), e);
   }
 }
 
-export async function verify(
+export async function updateLibrary(
+  {
+    rootDir,
+    verbose,
+  }: {
+    rootDir: string;
+    verbose: boolean;
+  },
+) {
+  const { ios, android, all } = await generateHashes({ rootDir, verbose, skipNodeModules: true });
+  const prevJson = await readPackageJson(rootDir);
+
+  prevJson.rnNativeHash = {
+    ...prevJson.rnNativeHash,
+    ios,
+    android,
+    all,
+  };
+
+  await writeFile(Path.join(rootDir, 'package.json'), `${JSON.stringify(prevJson, null, 2)}\n`);
+}
+
+export async function verifyExpoApp(
   {
     verbose,
     rootDir,
-    filePath,
-    packageJsonPath,
-    easJsonPath,
-    packageJsonProp,
-    includeBuildNumbers,
-    includeVersionNumber,
   }: {
     verbose: boolean;
     rootDir: string;
-    filePath: string | null;
-    packageJsonPath: string | null;
-    easJsonPath: string | null;
-    packageJsonProp: string;
-    includeBuildNumbers: boolean;
-    includeVersionNumber: boolean;
   },
 ) {
   if (verbose) { console.info(`getting depenency hash for native dependencies in: ${rootDir}`); }
-  const hash = await getCurrentHash(rootDir, verbose, includeBuildNumbers, includeVersionNumber);
-  console.log(bold(`rn-native-hash: ${hash}`));
+
+  const { ios, android, all } = await generateHashes({ rootDir, verbose });
+
   let valueExists = false;
   let hasChanged = false;
 
-  if (filePath) {
-    const prevHashFile = await getHashFromFile(filePath, verbose);
+  try {
+    const expoConfig = readExpoConfig(rootDir);
 
-    if (prevHashFile) {
+    if (expoConfig.runtimeVersion && expoConfig.runtimeVersion !== all) {
+      hasChanged = true;
       valueExists = true;
-
-      if (prevHashFile !== hash) {
-        hasChanged = true;
-        console.log(red(`hash has changed in ${filePath}! (${prevHashFile})`));
-      }
+      console.warn(yellow(`Hash has changed (was ${expoConfig.runtimeVersion})`));
     }
-  }
 
-  if (packageJsonPath) {
-    const prevHash = await getHashFromPackage(packageJsonPath, packageJsonProp, verbose);
-
-    if (prevHash) {
+    if (expoConfig.ios?.runtimeVersion && expoConfig.ios.runtimeVersion !== ios) {
+      hasChanged = true;
       valueExists = true;
-      if (prevHash !== hash) {
-        hasChanged = true;
-        console.log(red(`hash has changed in ${packageJsonPath}! (${prevHash})`));
-      }
+      console.warn(yellow(`Hash has changed (was ${expoConfig.ios.runtimeVersion})`));
     }
-  }
 
-  if (easJsonPath) {
-    try {
-      const propName = 'build';
-      const prev = await readFile(easJsonPath, 'utf8');
-      const prevJson = JSON.parse(prev) as { version: string; build: Record<string, BuildProfile> };
-
-      Object.keys(prevJson[propName]).forEach((buildProfile) => {
-        const prevReleaseChannel = prevJson[propName][buildProfile].releaseChannel;
-
-        const newReleaseChannel = `${hash}-${buildProfile}`;
-        (prevJson[propName][buildProfile]).releaseChannel = newReleaseChannel;
-
-        if (prevReleaseChannel) {
-          valueExists = true;
-          if (prevReleaseChannel !== newReleaseChannel) {
-            hasChanged = true;
-            console.warn(yellow(`Hash for profile ${buildProfile} changed (was ${prevReleaseChannel})`));
-          }
-        }
-      });
-    } catch (e) {
-      if (verbose) {
-        console.error(e);
-      }
+    if (expoConfig.android?.runtimeVersion
+      && expoConfig.android.runtimeVersion !== android
+    ) {
+      hasChanged = true;
+      valueExists = true;
+      console.warn(yellow(`Hash has changed (was ${expoConfig.android.runtimeVersion})`));
+    }
+  } catch (e) {
+    if (verbose) {
+      console.error(e);
     }
   }
 
   if (!valueExists) {
-    console.error(red('Use "rn-native-hash generate" to create a new hash. No previous hash found, looked in:'));
-    console.error(`${filePath as string}\n${packageJsonPath as string}\n${easJsonPath as string}`);
+    console.error(red('No previous hash found, looked in Expo Config. Use "rn-native-hash generate" to create a new hash.'));
     process.exit(1);
   } else if (hasChanged) {
     console.error(red('hash has changed'));
@@ -352,4 +429,53 @@ export async function verify(
   } else {
     console.log(green('rn-native-hash up to date'));
   }
+}
+
+export async function verifyLibrary(
+  {
+    verbose,
+    rootDir,
+  }: {
+    verbose: boolean;
+    rootDir: string;
+  },
+) {
+  if (verbose) { console.info(`getting depenency hash for native dependencies in: ${rootDir}`); }
+
+  const { ios, android, all } = await generateHashes({ rootDir, verbose, skipNodeModules: true });
+
+  let valueExists = false;
+  let hasChanged = false;
+
+  try {
+    const packageJson = await readPackageJson(rootDir);
+
+    if (packageJson.rnNativeHash?.all) {
+      valueExists = true;
+      if (packageJson.rnNativeHash?.all !== all) {
+        console.warn(yellow(`Hash has changed (was ${packageJson.rnNativeHash.all})`));
+        hasChanged = true;
+      }
+    }
+
+    if (packageJson.rnNativeHash?.ios) {
+      valueExists = true;
+      if (packageJson.rnNativeHash.ios !== ios) {
+        hasChanged = true;
+        console.warn(yellow(`iOS hash has changed (was ${packageJson.rnNativeHash.ios})`));
+      }
+    }
+
+    if (packageJson.rnNativeHash?.android) {
+      valueExists = true;
+      if (packageJson.rnNativeHash.android !== android) {
+        hasChanged = true;
+        console.warn(yellow(`Android hash has changed (was ${packageJson.rnNativeHash.android})`));
+      }
+    }
+  } catch (e) {
+    console.error(e);
+  }
+
+  return { valueExists, hasChanged };
 }
