@@ -9,3 +9,4 @@ index.test.d.ts
 index.test.js
 cli.d.ts
 cli.js
+.DS_Store
