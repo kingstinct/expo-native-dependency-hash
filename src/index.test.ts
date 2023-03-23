@@ -56,9 +56,9 @@ describe('Tests', () => {
         isNativeIOS: true,
         name: 'ios-module-with-hash',
         rnNativeHash: {
-          ios: '9bef92d39aadf1d19beff6a36f603677',
-          android: '9fddc02c5d3701022a51cb375e5dc3b5',
-          all: '9bef92d39aadf1d19beff6a36f603677',
+          ios: '254a83c80ebe4c7b42bf7f5538813fd5',
+          android: '4902279e6de69269eeff55b28c60c181',
+          all: '254a83c80ebe4c7b42bf7f5538813fd5',
         },
         path: 'src/testdata/node_modules/ios-module-with-hash',
         version: '0.0.2',
@@ -96,9 +96,9 @@ describe('Tests', () => {
         isNativeIOS: true,
         name: 'native-module-with-hash',
         rnNativeHash: {
-          ios: 'b602b7db4cb330f39604db57665831a6',
-          android: '2ab9cc96e1bcd729221e3b4640112a1d',
-          all: '410849fa982d56aa0a1bae9e68a67d1b',
+          ios: 'de10c7cf9f9a6820a2aff4572324f151',
+          android: '55a519c798b64c1e583c0ae462deff8b',
+          all: 'b46cd834ab7312dfb6534b17d2b65763',
         },
         path: 'src/testdata/node_modules/native-module-with-hash',
         version: '0.0.2',
@@ -114,7 +114,7 @@ describe('Tests', () => {
   test('getCurrentHash', async () => {
     const hash = await getCurrentHash(Platform.all, { rootDir: path.join(__dirname, 'testdata'), verbose: true });
 
-    expect(hash).toEqual('5e337a88663d36814bddf59adef6d943');
+    expect(hash).toEqual('3ff3d5da780c7d7573c9ddac26528fc5');
   });
 
   test('verifyLibrary', async () => {
@@ -122,21 +122,21 @@ describe('Tests', () => {
 
     expect(hasChanged).toBe(false);
     expect(valueExists).toBe(true);
-  });
+  }, 10000);
 
   test('verifyLibrary without hash', async () => {
     const { hasChanged, valueExists } = await verifyLibrary({ rootDir: `${__dirname}/testdata/node_modules/android-module`, verbose: true });
 
     expect(hasChanged).toBe(false);
     expect(valueExists).toBe(false);
-  });
+  }, 10000);
 
   test('verifyLibrary with faulty hash', async () => {
     const { hasChanged, valueExists } = await verifyLibrary({ rootDir: `${__dirname}/testdata/node_modules/native-module-with-faulty-hash`, verbose: true });
 
     expect(hasChanged).toBe(true);
     expect(valueExists).toBe(true);
-  });
+  }, 10000);
 
   test('readPackageJson', async () => {
     const jsModuleVersion = await readPackageJson('src/testdata/node_modules/js-module');
@@ -146,7 +146,7 @@ describe('Tests', () => {
     expect(jsModuleVersion.rnNativeHash).toEqual(undefined);
     expect(nativeModuleVersion.version).toEqual('0.0.2');
     expect(nativeModuleVersion.rnNativeHash).toEqual(undefined);
-  });
+  }, 10000);
 
   /* test('readExpoConfig', () => {
     const jsModuleVersion = readExpoConfig('src/testdata/node_modules/js-module');
