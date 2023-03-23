@@ -114,7 +114,7 @@ describe('Tests', () => {
   test('getCurrentHash', async () => {
     const hash = await getCurrentHash(Platform.all, { rootDir: path.join(__dirname, 'testdata'), verbose: true });
 
-    expect(hash).toEqual('3ff3d5da780c7d7573c9ddac26528fc5');
+    expect(hash).toEqual('ba5fc81cd25f4ccb1441766ce915d707');
   });
 
   test('verifyLibrary', async () => {

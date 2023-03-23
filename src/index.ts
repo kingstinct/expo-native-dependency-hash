@@ -12,6 +12,8 @@ import * as Path from 'node:path';
 import stableStringify from 'fast-safe-stringify';
 import { readFileSync } from 'fs';
 
+import type { ExpoConfig, Android, IOS } from '@expo/config-types';
+
 export type Module = {
   name: string,
   path: string,
@@ -137,21 +139,6 @@ export const getHashFromPackage = async (
   }
 };
 
-type ExpoAppJson = {
-  expo: {
-    runtimeVersion?: string,
-    version: string | undefined,
-    ios?: {
-      buildNumber?: string | undefined,
-      runtimeVersion?: string | undefined,
-    } | undefined,
-    android?: {
-      versionCode?: string | undefined,
-      runtimeVersion?: string | undefined,
-    } | undefined
-  }
-};
-
 const deletePropsFromAppJson = [
   'web',
   'owner',
@@ -161,6 +148,10 @@ const deletePropsFromAppJson = [
   'githubUrl',
   'hooks',
   'runtimeVersion',
+  '_internal',
+  'updates',
+  'scheme',
+
 ];
 
 export const getModules = async (rootDir = '.') => {
@@ -216,8 +207,8 @@ export const getModules = async (rootDir = '.') => {
 };
 
 export const readExpoConfig = (rootDir = '.') => {
-  const appJsonStr = execSync('npx expo config --json --full', { cwd: rootDir, encoding: 'utf-8', env: process.env });
-  const appJson = JSON.parse(appJsonStr) as { exp: ExpoAppJson['expo'] };
+  const appJsonStr = execSync('npx expo config --json --full --type prebuild', { cwd: rootDir, encoding: 'utf-8', env: process.env });
+  const appJson = JSON.parse(appJsonStr) as { exp: ExpoConfig };
   return appJson.exp;
 };
 
@@ -233,28 +224,67 @@ type GenerateHashOptions = {
   skipNodeModules?: boolean,
 };
 
+const androidPropsToHash: Partial<Record<keyof Android, boolean>> = {
+  permissions: true,
+  blockedPermissions: true,
+  jsEngine: true,
+};
+
+const iosPropsToHash: Partial<Record<keyof IOS, boolean>> = {
+  entitlements: true,
+  infoPlist: true,
+  jsEngine: true,
+};
+
+const expoPropsToHash: Partial<Record<keyof ExpoConfig, boolean>> = {
+  android: true,
+  ios: true,
+  plugins: true,
+  entryPoint: true,
+  jsEngine: true,
+};
+
 const getAppJsonHash = (platform = Platform.all, rootDir = '.', verbose = false) => {
   let appJsonContent = '';
 
   try {
     const appJson = readExpoConfig(rootDir);
 
-    deletePropsFromAppJson.forEach((prop) => {
-      delete appJson[prop];
+    Object.keys(appJson || {}).forEach((key) => {
+      if (!expoPropsToHash[key]) {
+        delete appJson[key];
+      }
     });
 
     if (platform === Platform.ios) {
       delete appJson.android;
     } else {
-      delete appJson.android?.versionCode;
-      delete appJson.android?.runtimeVersion;
+      Object.keys(appJson.android || {}).forEach((key) => {
+        if (!androidPropsToHash[key]) {
+          delete appJson.android?.[key];
+        }
+      });
     }
 
     if (platform === Platform.android) {
       delete appJson.ios;
     } else {
-      delete appJson.ios?.buildNumber;
-      delete appJson.ios?.runtimeVersion;
+      const bundleIdentifier = appJson.ios?.bundleIdentifier;
+      Object.keys(appJson.ios || {}).forEach((key) => {
+        if (!iosPropsToHash[key]) {
+          delete appJson.ios?.[key];
+        } else if (key === 'entitlements') {
+          Object.keys(appJson.ios?.entitlements || {}).forEach((entitlementKey) => {
+            if (appJson.ios?.entitlements?.[entitlementKey]) {
+              // some entitlements have the bundleIdentifier in them,
+              // lets ignore it to avoid unnecessary rebuilds
+              // eslint-disable-next-line max-len
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+              appJson.ios.entitlements[entitlementKey] = appJson.ios.entitlements[entitlementKey].replace(bundleIdentifier, '');
+            }
+          });
+        }
+      });
     }
 
     const appJsonStr = stableStringify(appJson);
@@ -317,7 +347,7 @@ const generateHashes = async (opts: GenerateHashOptions = GENERATE_HASH_DEFAULTS
   ]);
 
   if (opts.verbose) {
-    console.log(`${bold('[rn-native-hash]')}\n${ios} (ios)\n${android} (android)\n${all} (all)`);
+    console.log(`${bold('[expo-native-dependency-hash]')}\n${ios} (ios)\n${android} (android)\n${all} (all)`);
   }
 
   return {
@@ -394,7 +424,7 @@ export async function updateExpoApp(
 
   try {
     const fileStr = readFileSync(Path.join(rootDir, 'app.json'), 'utf8');
-    const prevJson = JSON.parse(fileStr) as ExpoAppJson;
+    const prevJson = JSON.parse(fileStr) as { expo: ExpoConfig };
 
     prevJson.expo.runtimeVersion = all;
     prevJson.expo.ios = { ...prevJson.expo.ios, runtimeVersion: ios };
@@ -430,7 +460,7 @@ export async function verifyLibrary(
     if (packageJson.rnNativeHash?.all) {
       valueExists = true;
       if (packageJson.rnNativeHash?.all !== all) {
-        console.warn(yellow(`Hash has changed (was ${packageJson.rnNativeHash.all})`));
+        console.warn(yellow(`Hash has changed (is ${packageJson.rnNativeHash.all}, should be ${all}`));
         hasChanged = true;
       }
     }
@@ -439,7 +469,7 @@ export async function verifyLibrary(
       valueExists = true;
       if (packageJson.rnNativeHash.ios !== ios) {
         hasChanged = true;
-        console.warn(yellow(`iOS hash has changed (was ${packageJson.rnNativeHash.ios})`));
+        console.warn(yellow(`iOS hash has changed (is ${packageJson.rnNativeHash.ios}, should be ${ios}`));
       }
     }
 
@@ -447,7 +477,7 @@ export async function verifyLibrary(
       valueExists = true;
       if (packageJson.rnNativeHash.android !== android) {
         hasChanged = true;
-        console.warn(yellow(`Android hash has changed (was ${packageJson.rnNativeHash.android})`));
+        console.warn(yellow(`Android hash has changed (is ${packageJson.rnNativeHash.android}, should be ${android}`));
       }
     }
   } catch (e) {

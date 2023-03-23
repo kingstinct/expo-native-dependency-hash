@@ -19,7 +19,7 @@ function absoluteOrRelativePath(path: string) {
 
 const throwIfGitDirty = () => {
   if (isGitDirty('.')) {
-    console.error(red('[rn-native-hash] Git working copy is dirty. Please commit or stash your changes before running this command.'));
+    console.error(red('[expo-native-dependency-hash] Git working copy is dirty. Please commit or stash your changes before running this command.'));
     process.exit(1);
   }
 };
@@ -45,8 +45,8 @@ const throwIfGitDirty = () => {
 
 void yargs(hideBin(process.argv))
   .command(
-    'verify-expo-app [rootDir]',
-    'Check if hash has changed',
+    'expo-app-verify [rootDir]',
+    'Check if hash has changed, good for CI and git hooks',
     (y) => y
       .positional('rootDir', {
         describe: 'root directory of the app or library',
@@ -77,19 +77,47 @@ void yargs(hideBin(process.argv))
       );
 
       if (!valueExists) {
-        console.error(red('[rn-native-hash] No previous hash found, looked in Expo Config. Use "rn-native-hash generate" to create a new hash.'));
+        console.error(red('[expo-native-dependency-hash] No previous hash found, looked in Expo Config. Use "expo-native-dependency-hash generate" to create a new hash.'));
         process.exit(1);
       } else if (hasChanged) {
-        console.error(red('[rn-native-hash] hash has changed'));
+        console.error(red('[expo-native-dependency-hash] hash has changed'));
         process.exit(1);
       } else {
-        console.log(green('[rn-native-hash] Hash up to date'));
+        console.log(green('[expo-native-dependency-hash] Hash up to date'));
       }
     },
   )
+  .command('expo-app-update [rootDir]', 'Update hash representing this apps native dependencies', (y) => y
+    .positional('rootDir', {
+      describe: 'root directory of the app or library',
+      default: '.',
+    })
+    .option('verbose', {
+      alias: 'v',
+      type: 'boolean',
+      description: 'Run with verbose logging',
+    }), async (argv) => {
+    const verbose = argv.verbose || argv.v as boolean || false;
+
+    throwIfGitDirty();
+
+    const rootDir = absoluteOrRelativePath(argv.rootDir);
+
+    if (verbose) {
+      console.log('generate', argv);
+    }
+
+    if (verbose) console.info(`getting depenency hash for native dependencies in: ${rootDir}`);
+    await updateExpoApp(
+      {
+        rootDir,
+        verbose,
+      },
+    );
+  })
   .command(
-    'verify-library [rootDir]',
-    'Check if hash has changed',
+    'library-verify [rootDir]',
+    'Check if hash has changed, fails if it has, good for CI and git hooks',
     (y) => y
       .positional('rootDir', {
         describe: 'root directory of the app or library',
@@ -120,17 +148,17 @@ void yargs(hideBin(process.argv))
       );
 
       if (!valueExists) {
-        console.error(red('[rn-native-hash] No previous hash found, looked in package.json. Use "rn-native-hash update-library" to create a new hash'));
+        console.error(red('[expo-native-dependency-hash] No previous hash found, looked in package.json. Use "expo-native-dependency-hash update-library" to create a new hash'));
         process.exit(1);
       } else if (hasChanged) {
-        console.error(red('[rn-native-hash] Hash has changed'));
+        console.error(red('[expo-native-dependency-hash] Hash has changed'));
         process.exit(1);
       } else {
-        console.log(green('[rn-native-hash] Hash up to date'));
+        console.log(green('[expo-native-dependency-hash] Hash up to date'));
       }
     },
   )
-  .command('update-expo-app [rootDir]', 'Generate hash representing native dependencies', (y) => y
+  .command('library-update [rootDir]', 'Updates the hash based on the native files in the project', (y) => y
     .positional('rootDir', {
       describe: 'root directory of the app or library',
       default: '.',
@@ -151,14 +179,15 @@ void yargs(hideBin(process.argv))
     }
 
     if (verbose) console.info(`getting depenency hash for native dependencies in: ${rootDir}`);
-    await updateExpoApp(
+
+    await updateLibrary(
       {
         rootDir,
         verbose,
       },
     );
   })
-  .command('list [rootDir]', 'Lists all native dependencies', (y) => y
+  .command('list [rootDir]', 'Lists all native dependency identities of an app', (y) => y
     .positional('rootDir', {
       describe: 'root directory of the app or library',
       default: '.',
@@ -175,8 +204,6 @@ void yargs(hideBin(process.argv))
     }), async (argv) => {
     const verbose = argv.verbose || argv.v as boolean || false;
     const platform = argv.platform as Platform || argv.p as Platform || Platform.all;
-
-    throwIfGitDirty();
 
     const rootDir = absoluteOrRelativePath(argv.rootDir);
 
@@ -221,7 +248,7 @@ void yargs(hideBin(process.argv))
     const rootDir = absoluteOrRelativePath(argv.rootDir);
 
     if (verbose) {
-      console.log('rn-native-hash', argv);
+      console.log('expo-native-dependency-hash', argv);
     }
 
     if (verbose) console.info(`getting depenency hash for native dependencies in: ${rootDir}`);
@@ -231,35 +258,6 @@ void yargs(hideBin(process.argv))
       skipNodeModules,
     });
     process.stdout.write(hash);
-  })
-  .command('update-library [rootDir]', 'Returns the hash based on the native files', (y) => y
-    .positional('rootDir', {
-      describe: 'root directory of the app or library',
-      default: '.',
-    })
-    .option('verbose', {
-      alias: 'v',
-      type: 'boolean',
-      description: 'Run with verbose logging',
-    }), async (argv) => {
-    const verbose = argv.verbose || argv.v as boolean || false;
-
-    throwIfGitDirty();
-
-    const rootDir = absoluteOrRelativePath(argv.rootDir);
-
-    if (verbose) {
-      console.log('generate', argv);
-    }
-
-    if (verbose) console.info(`getting depenency hash for native dependencies in: ${rootDir}`);
-
-    await updateLibrary(
-      {
-        rootDir,
-        verbose,
-      },
-    );
   })
   .recommendCommands()
   .demandCommand(1)
