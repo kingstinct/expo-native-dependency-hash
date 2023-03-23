@@ -16,7 +16,10 @@
     "kingstinct"
   ],
   "bugs": {
-    "url": "https://github.com/robertherber/expo-native-dependency-hash/issues"
+    "url": "https://github.com/kingstinct/expo-native-dependency-hash/issues"
+  },
+  "repository": {
+    "url": "https://github.com/kingstinct/expo-native-dependency-hash"
   },
   "bin": {
     "expo-native-dependency-hash": "cli.js"
