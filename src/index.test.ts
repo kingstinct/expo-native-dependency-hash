@@ -36,9 +36,9 @@ describe('Tests', () => {
         isNativeIOS: false,
         name: 'android-module-with-hash',
         rnNativeHash: {
-          ios: '55ced75517884f5f86e2c36097f78e33',
-          android: '9bf8dfcb0b6dd11b8f2c817eec217651',
-          all: '9bf8dfcb0b6dd11b8f2c817eec217651',
+          ios: 'db408bcb42c49f4433aa8b5a95c083e8',
+          android: '636f80339c58196c102ec0f4c9878503',
+          all: '636f80339c58196c102ec0f4c9878503',
         },
         path: 'src/testdata/node_modules/android-module-with-hash',
         version: '0.0.2',
@@ -114,10 +114,10 @@ describe('Tests', () => {
   test('getCurrentHash', async () => {
     const hash = await getCurrentHash(Platform.all, { rootDir: path.join(__dirname, 'testdata'), verbose: true });
 
-    expect(hash).toEqual('ba5fc81cd25f4ccb1441766ce915d707');
+    expect(hash).toEqual('b98c0e5d9ff15b1ca98d7aa3d09ebe39');
   });
 
-  test('verifyLibrary', async () => {
+  test('verifyLibrary true', async () => {
     const { hasChanged, valueExists } = await verifyLibrary({ rootDir: `${__dirname}/testdata/node_modules/android-module-with-hash`, verbose: true });
 
     expect(hasChanged).toBe(false);
