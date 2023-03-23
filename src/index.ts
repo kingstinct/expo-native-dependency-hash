@@ -20,7 +20,7 @@ export type Module = {
   version: string,
   isNativeAndroid: boolean,
   isNativeIOS: boolean,
-  rnNativeHash?: {
+  nativeDependencyHash?: {
     ios?: string,
     android?: string,
     all?: string
@@ -34,16 +34,16 @@ export enum Platform {
 }
 
 export const getModuleIdentity = (platform: Platform) => (m: Module) => {
-  if (platform === Platform.all && m.rnNativeHash?.all) {
-    return `${m.name}@${m.rnNativeHash.all}`;
+  if (platform === Platform.all && m.nativeDependencyHash?.all) {
+    return `${m.name}@${m.nativeDependencyHash.all}`;
   }
 
-  if (platform === Platform.ios && m.rnNativeHash?.ios) {
-    return `${m.name}@${m.rnNativeHash.ios}`;
+  if (platform === Platform.ios && m.nativeDependencyHash?.ios) {
+    return `${m.name}@${m.nativeDependencyHash.ios}`;
   }
 
-  if (platform === Platform.android && m.rnNativeHash?.android) {
-    return `${m.name}@${m.rnNativeHash.android}`;
+  if (platform === Platform.android && m.nativeDependencyHash?.android) {
+    return `${m.name}@${m.nativeDependencyHash.android}`;
   }
 
   return `${m.name}@${m.version}`;
@@ -64,7 +64,7 @@ export const readPackageJson = async (path: string) => {
   const pkg = await readFile(Path.join(path, 'package.json'), 'utf8');
   const pkgJson = JSON.parse(pkg) as {
     version: string,
-    rnNativeHash?: Module['rnNativeHash']
+    nativeDependencyHash?: Module['nativeDependencyHash']
   };
   return pkgJson;
 };
@@ -169,7 +169,7 @@ export const getModules = async (rootDir = '.') => {
           const submodules = await readdir(path);
           const allSubmodules = await Promise.all(submodules.map<Promise<Module>>(async (s) => {
             const pathToSubmodule = Path.join(dir, m, s);
-            const { version, rnNativeHash } = await readPackageJson(pathToSubmodule);
+            const { version, nativeDependencyHash } = await readPackageJson(pathToSubmodule);
 
             return {
               isNativeAndroid: await hasNativeVersion(Platform.android, path),
@@ -177,12 +177,12 @@ export const getModules = async (rootDir = '.') => {
               name: `${m}/${s}`,
               path: pathToSubmodule,
               version,
-              rnNativeHash,
+              nativeDependencyHash,
             };
           }));
           return allSubmodules;
         }
-        const { version, rnNativeHash } = await readPackageJson(path);
+        const { version, nativeDependencyHash } = await readPackageJson(path);
 
         return [{
           isNativeAndroid: await hasNativeVersion(Platform.android, path),
@@ -190,7 +190,7 @@ export const getModules = async (rootDir = '.') => {
           name: m,
           path,
           version,
-          rnNativeHash,
+          nativeDependencyHash,
         }] as Module[];
       }
       return [];
@@ -470,27 +470,27 @@ export async function verifyLibrary(
   try {
     const packageJson = await readPackageJson(rootDir);
 
-    if (packageJson.rnNativeHash?.all) {
+    if (packageJson.nativeDependencyHash?.all) {
       valueExists = true;
-      if (packageJson.rnNativeHash?.all !== all) {
-        console.warn(yellow(`Hash has changed (is ${packageJson.rnNativeHash.all}, should be ${all}`));
+      if (packageJson.nativeDependencyHash?.all !== all) {
+        console.warn(yellow(`Hash has changed (is ${packageJson.nativeDependencyHash.all}, should be ${all}`));
         hasChanged = true;
       }
     }
 
-    if (packageJson.rnNativeHash?.ios) {
+    if (packageJson.nativeDependencyHash?.ios) {
       valueExists = true;
-      if (packageJson.rnNativeHash.ios !== ios) {
+      if (packageJson.nativeDependencyHash.ios !== ios) {
         hasChanged = true;
-        console.warn(yellow(`iOS hash has changed (is ${packageJson.rnNativeHash.ios}, should be ${ios}`));
+        console.warn(yellow(`iOS hash has changed (is ${packageJson.nativeDependencyHash.ios}, should be ${ios}`));
       }
     }
 
-    if (packageJson.rnNativeHash?.android) {
+    if (packageJson.nativeDependencyHash?.android) {
       valueExists = true;
-      if (packageJson.rnNativeHash.android !== android) {
+      if (packageJson.nativeDependencyHash.android !== android) {
         hasChanged = true;
-        console.warn(yellow(`Android hash has changed (is ${packageJson.rnNativeHash.android}, should be ${android}`));
+        console.warn(yellow(`Android hash has changed (is ${packageJson.nativeDependencyHash.android}, should be ${android}`));
       }
     }
   } catch (e) {
@@ -521,8 +521,8 @@ export async function updateLibrary(
   });
   const prevJson = await readPackageJson(rootDir);
 
-  prevJson.rnNativeHash = {
-    ...prevJson.rnNativeHash,
+  prevJson.nativeDependencyHash = {
+    ...prevJson.nativeDependencyHash,
     ios,
     android,
     all,

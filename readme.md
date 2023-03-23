@@ -50,27 +50,25 @@ A simple example of how it can be done with GitHub Actions and EAS Build:
 
       # Check if there has exists a build for this native hash
       - name: Matching Native Builds
-        run: echo "MATCHING_BUILDS=`npx eas-cli@latest build:list --status=finished | grep -c $HASH`" >> $GITHUB_ENV
+        run: echo "MATCHING_BUILDS=`npx eas-cli@latest build:list --platform=ios --status=finished | grep -c $HASH`" >> $GITHUB_ENV
 
       # Publish bundle if there is already a Native Build for this hash out there:
       - name: Expo Publish
         id: expo-publish
         if: ${{ env.MATCHING_BUILDS > 0 }}
-        run: expo publish --release-channel=`expo-native-dependency-hash hash`
+        run: eas update
 
       # Build new Native Client if there are no
       - name: EAS Build
         id: eas-build
         if: ${{ env.MATCHING_BUILDS == 0 }}
-        run: npx eas-cli@latest build --platform all --non-interactive --no-wait
+        run: npx eas-cli@latest build --platform ios --non-interactive --no-wait
 ```
 * There are obviously edge cases in this simple implementation; we could check per platform and for builds that are in progress so we don't build duplicates etc..
 
-This example works best when running `expo-native-dependency-hash generate -e` on postinstall - since that will keep the releaseChannels updated in `eas.json`.
+## What is included in the hash
+We detect native modules by looking for `ios` and/or `android` folders in each package. Please post an issue (PRs are welcome :) for any false positives/negatives you might find! To see whether everything looks right you can use `expo-native-dependency-hash list` for a full list of libraries that we detect as being native. The hash is by default `a-native-module@1.0.0` but if setting the nativeDependencyHash prop in package.json the libraries indicate whether a new version requires a new native build, then the hash will look like `a-native-module@the-specified-native-hash`.
 
-## How we detect Native Modules
-We detect native modules by looking for `ios` and/or `android` folders in each package. Please post an issue (PRs are welcome :) for any false positives/negatives you might find! To see whether everything looks right you can use `expo-native-dependency-hash list` for a full list of libraries that we detect as being native.
+If there is an `app.json` (as used by Expo) present some of its contents will also be included in the generated hash (see `androidPropsToHash`, `iosPropsToHash` and `expoPropsToHash` in index.js for an up-to-date-list).
 
-If there is an `app.json` (as used by Expo) present its contents will also be included in the generated hash. By default web and versionCode/buildNumber is ignored. versionCode/buildNumber can be included with --includeBuildNumber flag.
-
-If you're using Expo Bare Workflow or React Native without Expo please note that native changes internal to your project will currently not be reflected in the hash (only native dependencies).
+If you have a native or bare project the contents of your iOS and Android folder is also hashed (any change, even a whitespace change, will result in a new hash).
