@@ -1,15 +1,8 @@
 {
-    "include": [
-        "./src/**/*.ts"
-    ],
-    "exclude": [
-        
-    ],
     "compilerOptions": {
-        "outDir": ".",
         "strictNullChecks": true,
-        "target": "ES2017",
+        "noUncheckedIndexedAccess": true,
         "module": "commonjs",
-        "declaration": true
+        "noEmit": true
     }
 }

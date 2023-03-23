@@ -1,10 +1,12 @@
 {
     "expo": {
+        "name": "My App",
+        "slug": "my-app",
         "ios": {
             "buildNumber": "1"
         },
         "android": {
-            "versionCode": "1"
+            "versionCode": 1
         }
     }
 }

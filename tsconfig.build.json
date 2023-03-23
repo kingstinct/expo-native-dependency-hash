@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+      "./src/**/*.ts"
+  ],
+  "exclude": [],
+  "compilerOptions": {
+    "outDir": ".",
+    "declaration": true,
+    "target": "ES2017",
+    "noEmit": false
+  }
+}
