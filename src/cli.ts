@@ -61,8 +61,6 @@ void yargs(hideBin(process.argv))
     async (argv) => {
       const verbose = argv.verbose || argv.v as boolean || false;
 
-      throwIfGitDirty();
-
       if (verbose) {
         console.log('verify', argv);
       }
@@ -87,34 +85,37 @@ void yargs(hideBin(process.argv))
       }
     },
   )
-  .command('expo-app-update [rootDir]', 'Update hash representing this apps native dependencies', (y) => y
-    .positional('rootDir', {
-      describe: 'root directory of the app or library',
-      default: '.',
-    })
-    .option('verbose', {
-      alias: 'v',
-      type: 'boolean',
-      description: 'Run with verbose logging',
-    }), async (argv) => {
-    const verbose = argv.verbose || argv.v as boolean || false;
+  .command(
+    'expo-app-update [rootDir]',
+    'Update hash representing this apps native dependencies',
+    (y) => y
+      .positional('rootDir', {
+        describe: 'root directory of the app or library',
+        default: '.',
+      })
+      .option('verbose', {
+        alias: 'v',
+        type: 'boolean',
+        description: 'Run with verbose logging',
+      }),
+    async (argv) => {
+      const verbose = (argv.verbose || argv.v as boolean) ?? false;
 
-    throwIfGitDirty();
+      const rootDir = absoluteOrRelativePath(argv.rootDir);
 
-    const rootDir = absoluteOrRelativePath(argv.rootDir);
+      if (verbose) {
+        console.log('generate', argv);
+      }
 
-    if (verbose) {
-      console.log('generate', argv);
-    }
-
-    if (verbose) console.info(`getting depenency hash for native dependencies in: ${rootDir}`);
-    await updateExpoApp(
-      {
-        rootDir,
-        verbose,
-      },
-    );
-  })
+      if (verbose) console.info(`getting depenency hash for native dependencies in: ${rootDir}`);
+      await updateExpoApp(
+        {
+          rootDir,
+          verbose,
+        },
+      );
+    },
+  )
   .command(
     'library-verify [rootDir]',
     'Check if hash has changed, fails if it has, good for CI and git hooks',
@@ -128,11 +129,20 @@ void yargs(hideBin(process.argv))
         type: 'boolean',
         default: false,
         description: 'Run with verbose logging',
+      })
+      .option('force', {
+        type: 'boolean',
+        description: 'Ignore if git is dirty',
+        default: false,
       }),
     async (argv) => {
       const verbose = argv.verbose || argv.v as boolean || false;
 
-      throwIfGitDirty();
+      const { force } = argv;
+
+      if (!force) {
+        throwIfGitDirty();
+      }
 
       if (verbose) {
         console.log('verify', argv);
@@ -167,10 +177,18 @@ void yargs(hideBin(process.argv))
       alias: 'v',
       type: 'boolean',
       description: 'Run with verbose logging',
+    })
+    .option('force', {
+      type: 'boolean',
+      description: 'Ignore if git is dirty',
+      default: false,
     }), async (argv) => {
     const verbose = argv.verbose || argv.v as boolean || false;
+    const { force } = argv;
 
-    throwIfGitDirty();
+    if (!force) {
+      throwIfGitDirty();
+    }
 
     const rootDir = absoluteOrRelativePath(argv.rootDir);
 
@@ -238,12 +256,21 @@ void yargs(hideBin(process.argv))
       type: 'boolean',
       default: false,
       description: 'Skip including node_modules, useful for libraries',
+    })
+    .option('force', {
+      type: 'boolean',
+      description: 'Ignore if git is dirty',
+      default: false,
     }), async (argv) => {
     const verbose = argv.verbose || argv.v as boolean || false;
     const skipNodeModules = argv.skipNodeModules || false;
     const platform = argv.platform as Platform || argv.p as Platform || Platform.all;
 
-    throwIfGitDirty();
+    const { force } = argv;
+
+    if (!force) {
+      throwIfGitDirty();
+    }
 
     const rootDir = absoluteOrRelativePath(argv.rootDir);
 
