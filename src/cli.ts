@@ -8,17 +8,23 @@ import {
   red, green,
 } from 'chalk';
 import {
-  updateExpoApp, getCurrentHash,
-  getModuleIdentity, verifyExpoApp, Platform,
-  updateLibrary, verifyLibrary, getModulesForPlatform, isGitDirty,
+  getCurrentHash,
+  getModuleIdentity,
+  getModulesForPlatform,
+  isGitDirty,
+  Platform,
+  updateExpoApp,
+  updateLibrary,
+  verifyExpoApp,
+  verifyLibrary,
 } from '.';
 
 function absoluteOrRelativePath(path: string) {
   return path.startsWith('/') ? path : join(process.cwd(), path);
 }
 
-const throwIfGitDirty = () => {
-  if (isGitDirty('.')) {
+const throwIfGitDirty = async () => {
+  if (await isGitDirty('.')) {
     console.error(red('[expo-native-dependency-hash] Git working copy is dirty. Please commit or stash your changes before running this command.'));
     process.exit(1);
   }
@@ -107,7 +113,7 @@ void yargs(hideBin(process.argv))
         console.log('generate', argv);
       }
 
-      if (verbose) console.info(`getting depenency hash for native dependencies in: ${rootDir}`);
+      if (verbose) console.info(`getting dependency hash for native dependencies in: ${rootDir}`);
       await updateExpoApp(
         {
           rootDir,
@@ -141,7 +147,7 @@ void yargs(hideBin(process.argv))
       const { force } = argv;
 
       if (!force) {
-        throwIfGitDirty();
+        await throwIfGitDirty();
       }
 
       if (verbose) {
@@ -187,7 +193,7 @@ void yargs(hideBin(process.argv))
     const { force } = argv;
 
     if (!force) {
-      throwIfGitDirty();
+      await throwIfGitDirty();
     }
 
     const rootDir = absoluteOrRelativePath(argv.rootDir);
@@ -196,7 +202,7 @@ void yargs(hideBin(process.argv))
       console.log('generate', argv);
     }
 
-    if (verbose) console.info(`getting depenency hash for native dependencies in: ${rootDir}`);
+    if (verbose) console.info(`getting dependency hash for native dependencies in: ${rootDir}`);
 
     await updateLibrary(
       {
@@ -229,7 +235,7 @@ void yargs(hideBin(process.argv))
       console.log('list', argv);
     }
 
-    if (verbose) console.info(`getting depenency hash for native dependencies in: ${rootDir}`);
+    if (verbose) console.info(`getting dependency hash for native dependencies in: ${rootDir}`);
 
     const allModules = await getModulesForPlatform(platform, rootDir);
 
@@ -269,7 +275,7 @@ void yargs(hideBin(process.argv))
     const { force } = argv;
 
     if (!force) {
-      throwIfGitDirty();
+      await throwIfGitDirty();
     }
 
     const rootDir = absoluteOrRelativePath(argv.rootDir);
@@ -278,7 +284,7 @@ void yargs(hideBin(process.argv))
       console.log('expo-native-dependency-hash', argv);
     }
 
-    if (verbose) console.info(`getting depenency hash for native dependencies in: ${rootDir}`);
+    if (verbose) console.info(`getting dependency hash for native dependencies in: ${rootDir}`);
     const hash = await getCurrentHash(platform, {
       rootDir,
       verbose,

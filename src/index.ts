@@ -7,14 +7,16 @@ import { createHash } from 'crypto';
 import {
   red, green, yellow, bold,
 } from 'chalk';
-import { execSync } from 'child_process';
+import { exec } from 'child_process';
 import * as Path from 'node:path';
+import * as util from 'util';
 import stableStringify from 'fast-safe-stringify';
-import { readFileSync } from 'fs';
 
 import '@total-typescript/ts-reset';
 
 import type { ExpoConfig, Android, IOS } from '@expo/config-types';
+
+const execAsync = util.promisify(exec);
 
 export type Module = {
   name: string,
@@ -86,15 +88,26 @@ export const hashFiles = async (rootDir: string, relativeFilePaths: string[], ve
   return hashIt(nativeFilesHashes.join(','));
 };
 
-export const isGitDirty = (rootDir: string) => {
-  const gitDiffOutput = execSync('git diff HEAD', { cwd: rootDir, encoding: 'utf8' }).toString();
+export const isGitDirty = async (rootDir: string) => {
+  const gitDiffOutput = (await execAsync('git diff HEAD', { cwd: rootDir, encoding: 'utf8' })).stdout;
   return gitDiffOutput.length > 0;
 };
 
 export const getFolderHash = async (platform: Platform, rootDir: string, verbose = false) => {
-  const gitFiles = execSync('git ls-tree -r HEAD --name-only', { cwd: rootDir, encoding: 'utf8', env: process.env });
+  const hasAndroidOrIOSFolders = await hasNativeVersion(platform, rootDir);
 
-  const nativeFiles = gitFiles
+  // if there are no native folders, we don't need to hash anything
+  if (!hasAndroidOrIOSFolders) {
+    return '';
+  }
+
+  const gitFiles = await execAsync('git ls-tree -r HEAD --name-only', {
+    cwd: rootDir,
+    encoding: 'utf8',
+    env: process.env,
+  });
+
+  const nativeFiles = gitFiles.stdout
     .split('\n')
     .filter((f) => {
       const includeBecauseIos = platform !== Platform.android && (f.startsWith('ios') || f.endsWith('.podspec'));
@@ -107,9 +120,9 @@ export const getFolderHash = async (platform: Platform, rootDir: string, verbose
 };
 
 export const getAppPluginHash = async (rootDir: string, verbose = false) => {
-  const gitFiles = execSync('git ls-tree -r HEAD --name-only', { cwd: rootDir, encoding: 'utf8', env: process.env });
+  const gitFiles = await execAsync('git ls-tree -r HEAD --name-only', { cwd: rootDir, encoding: 'utf8', env: process.env });
 
-  const nativeFiles = gitFiles
+  const nativeFiles = gitFiles.stdout
     .split('\n')
     .filter((f) => {
       const includeBecauseAppPlugin = f.endsWith('plugin.js') || f.endsWith('plugin.ts');
@@ -212,9 +225,9 @@ export const getModules = async (rootDir = '.') => {
   }
 };
 
-export const readExpoConfig = (rootDir = '.') => {
-  const appJsonStr = execSync('npx expo config --json --full --type prebuild', { cwd: rootDir, encoding: 'utf-8', env: process.env });
-  const appJson = JSON.parse(appJsonStr) as { exp: ExpoConfig };
+export const readExpoConfig = async (rootDir = '.') => {
+  const appJsonStr = await execAsync('npx expo config --json --full --type prebuild', { cwd: rootDir, encoding: 'utf-8', env: process.env });
+  const appJson = JSON.parse(appJsonStr.stdout) as { exp: ExpoConfig };
   return appJson.exp;
 };
 
@@ -255,11 +268,11 @@ const expoPropsToHash: Partial<Record<keyof ExpoConfig, boolean>> = {
   jsEngine: true,
 };
 
-const getAppJsonHash = (platform = Platform.all, rootDir = '.', verbose = false) => {
+const getAppJsonHash = async (platform = Platform.all, rootDir = '.', verbose = false) => {
   let appJsonContent = '';
 
   try {
-    const appJson = readExpoConfig(rootDir);
+    const appJson = await readExpoConfig(rootDir);
 
     Object.keys(appJson || {}).forEach((key) => {
       if (!expoPropsToHash[key]) {
@@ -286,12 +299,14 @@ const getAppJsonHash = (platform = Platform.all, rootDir = '.', verbose = false)
           delete appJson.ios?.[key];
         } else if (key === 'entitlements') {
           Object.keys(appJson.ios?.entitlements || {}).forEach((entitlementKey) => {
-            if (appJson.ios?.entitlements?.[entitlementKey]) {
+            // eslint-disable-next-line max-len
+            const entitlementValue = appJson.ios?.entitlements?.[entitlementKey] as string | undefined;
+            if (entitlementValue && typeof entitlementValue === 'string' && bundleIdentifier && appJson?.ios?.entitlements) {
               // some entitlements have the bundleIdentifier in them,
               // lets ignore it to avoid unnecessary rebuilds
               // eslint-disable-next-line max-len
               // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-              appJson.ios.entitlements[entitlementKey] = appJson.ios.entitlements[entitlementKey].replace(bundleIdentifier, '');
+              appJson.ios.entitlements[entitlementKey] = entitlementValue.replace(bundleIdentifier, '');
             }
           });
         }
@@ -332,7 +347,7 @@ export const getCurrentHash = async (platform: Platform, {
 }: GenerateHashOptions = GENERATE_HASH_DEFAULTS) => {
   const localNativeFoldersHash = await getFolderHash(platform, rootDir, verbose);
 
-  const appJsonContent = skipAppJson ? '' : getAppJsonHash(platform, rootDir, verbose);
+  const appJsonContent = skipAppJson ? '' : await getAppJsonHash(platform, rootDir, verbose);
 
   const nativeModules = skipNodeModules ? [] : await getModulesForPlatform(platform, rootDir);
 
@@ -380,7 +395,7 @@ export async function verifyExpoApp(
     rootDir: string;
   },
 ) {
-  if (verbose) { console.info(`getting depenency hash for native dependencies in: ${rootDir}`); }
+  if (verbose) { console.info(`getting dependency hash for native dependencies in: ${rootDir}`); }
 
   const { ios, android, all } = await generateHashes({ rootDir, verbose });
 
@@ -388,7 +403,7 @@ export async function verifyExpoApp(
   let hasChanged = false;
 
   try {
-    const expoConfig = readExpoConfig(rootDir);
+    const expoConfig = await readExpoConfig(rootDir);
 
     if (expoConfig.runtimeVersion) {
       valueExists = true;
@@ -441,7 +456,7 @@ export async function updateExpoApp(
   const { ios, android, all } = await generateHashes({ rootDir, verbose });
 
   try {
-    const fileStr = readFileSync(Path.join(rootDir, 'app.json'), 'utf8');
+    const fileStr = await readFile(Path.join(rootDir, 'app.json'), 'utf8');
     const prevJson = JSON.parse(fileStr) as { expo: ExpoConfig };
 
     prevJson.expo.runtimeVersion = all;
@@ -465,7 +480,7 @@ export async function verifyLibrary(
     rootDir: string;
   },
 ) {
-  if (verbose) { console.info(`getting depenency hash for native dependencies in: ${rootDir}`); }
+  if (verbose) { console.info(`getting dependency hash for native dependencies in: ${rootDir}`); }
 
   const { ios, android, all } = await generateHashes({
     rootDir, verbose, skipNodeModules: true, skipAppJson: true,
