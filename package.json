@@ -33,6 +33,7 @@
     "@types/yargs": "^17.0.5",
     "@typescript-eslint/eslint-plugin": "5",
     "@typescript-eslint/parser": "5",
+    "concurrently": "^8.0.1",
     "eslint": "8",
     "eslint-config-airbnb-base": "^15.0.0",
     "eslint-config-airbnb-typescript": "16",
@@ -48,7 +49,7 @@
     "build": "tsc -p tsconfig.build.json",
     "test": "jest src",
     "lint": "eslint ./src --ext .js,.jsx,.ts,.tsx",
-    "prepublish": "yarn build && yarn lint && yarn test"
+    "prepublish": "concurrently \"yarn build\" \"yarn lint\" \"yarn test\""
   },
   "dependencies": {
     "@total-typescript/ts-reset": "^0.4.2",
