@@ -171,7 +171,7 @@ export const getModules = async (rootDir = '.') => {
           const submodules = await readdir(path);
           const allSubmodules = await Promise.all(
             submodules.map<Promise<Module | false>>(async (s) => {
-              if (!m.startsWith('.')) {
+              if (s.startsWith('.')) {
                 return false;
               }
               const pathToSubmodule = Path.join(dir, m, s);
