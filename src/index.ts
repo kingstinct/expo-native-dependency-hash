@@ -98,7 +98,14 @@ export const getFolderHash = async (platform: Platform, rootDir: string, verbose
 
   // if there are no native folders, we don't need to hash anything
   if (!hasAndroidOrIOSFolders) {
+    if (verbose) {
+      console.log('Skipping native files because there are no iOS/Android folders');
+    }
     return '';
+  }
+
+  if (verbose) {
+    console.log('Reading native files from git...');
   }
 
   const gitFiles = await execAsync('git ls-tree -r HEAD --name-only', {
@@ -236,6 +243,7 @@ const GENERATE_HASH_DEFAULTS: Required<GenerateHashOptions> = {
   skipNodeModules: false,
   verbose: false,
   skipAppJson: false,
+  skipLocalNativeFolders: false,
 };
 
 type GenerateHashOptions = {
@@ -243,6 +251,7 @@ type GenerateHashOptions = {
   rootDir?: string,
   skipNodeModules?: boolean,
   skipAppJson?: boolean,
+  skipLocalNativeFolders?: boolean,
 };
 
 // this is a list of properties that should be included, lets focus on not breaking things
@@ -344,8 +353,13 @@ export const getCurrentHash = async (platform: Platform, {
   skipNodeModules = GENERATE_HASH_DEFAULTS.skipNodeModules,
   verbose = GENERATE_HASH_DEFAULTS.verbose,
   skipAppJson = GENERATE_HASH_DEFAULTS.skipAppJson,
+  skipLocalNativeFolders = GENERATE_HASH_DEFAULTS.skipLocalNativeFolders,
 }: GenerateHashOptions = GENERATE_HASH_DEFAULTS) => {
-  const localNativeFoldersHash = await getFolderHash(platform, rootDir, verbose);
+  if (verbose) {
+    console.log(`Getting hash for platform: ${platform}`);
+  }
+
+  const localNativeFoldersHash = skipLocalNativeFolders ? '' : await getFolderHash(platform, rootDir, verbose);
 
   const appJsonContent = skipAppJson ? '' : await getAppJsonHash(platform, rootDir, verbose);
 
@@ -355,7 +369,7 @@ export const getCurrentHash = async (platform: Platform, {
 
   const nativeModuleIdentities = nativeModules.map(getModuleIdentity(platform));
   if (verbose && !skipNodeModules) {
-    console.log(`Found ${nativeModules.length} native modules (out of ${nativeModules.length} total modules)\n${nativeModuleIdentities.join('\n')}`);
+    console.log(`Found ${nativeModules.length} native ${platform === Platform.all ? '' : `${platform} `}modules (out of ${nativeModules.length} total modules)\n${nativeModuleIdentities.join('\n')}`);
   }
   const stringToHashFrom = `app.json@${appJsonContent};local@${localNativeFoldersHash};${nativeModuleIdentities.join(',')};plugins@${appPlugins}`;
 
@@ -390,14 +404,23 @@ export async function verifyExpoApp(
   {
     verbose,
     rootDir,
+    includeAppJson,
+    includeLocalNativeFolders,
   }: {
     verbose: boolean;
     rootDir: string;
+    includeLocalNativeFolders?: boolean;
+    includeAppJson?: boolean;
   },
 ) {
-  if (verbose) { console.info(`getting dependency hash for native dependencies in: ${rootDir}`); }
+  if (verbose) { console.info(`[expo-native-dependency-hash] verifying expo app in: ${rootDir}`); }
 
-  const { ios, android, all } = await generateHashes({ rootDir, verbose });
+  const { ios, android, all } = await generateHashes({
+    rootDir,
+    verbose,
+    skipAppJson: !includeAppJson,
+    skipLocalNativeFolders: !includeLocalNativeFolders,
+  });
 
   let valueExists = false;
   let hasChanged = false;
@@ -434,26 +457,37 @@ export async function verifyExpoApp(
     }
   }
 
-  return { valueExists, hasChanged };
+  return {
+    valueExists, hasChanged, ios, android, all,
+  };
 }
 
 export async function updateExpoApp(
   {
     rootDir,
     verbose,
+    includeAppJson,
+    includeLocalNativeFolders,
   }: {
     rootDir: string;
     verbose: boolean;
+    includeAppJson?: boolean;
+    includeLocalNativeFolders?: boolean;
   },
 ) {
-  const { hasChanged, valueExists } = await verifyExpoApp({ rootDir, verbose });
+  const {
+    hasChanged, valueExists, ios, android, all,
+  } = await verifyExpoApp({
+    rootDir,
+    verbose,
+    includeAppJson,
+    includeLocalNativeFolders,
+  });
 
   if (!hasChanged && valueExists) {
     console.log(green('Hashes already up to date'));
     return;
   }
-
-  const { ios, android, all } = await generateHashes({ rootDir, verbose });
 
   try {
     const fileStr = await readFile(Path.join(rootDir, 'app.json'), 'utf8');
@@ -480,7 +514,7 @@ export async function verifyLibrary(
     rootDir: string;
   },
 ) {
-  if (verbose) { console.info(`getting dependency hash for native dependencies in: ${rootDir}`); }
+  if (verbose) { console.info(`[expo-native-dependency-hash] verifying library in: ${rootDir}`); }
 
   const { ios, android, all } = await generateHashes({
     rootDir, verbose, skipNodeModules: true, skipAppJson: true,

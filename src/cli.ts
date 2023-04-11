@@ -58,6 +58,14 @@ void yargs(hideBin(process.argv))
         describe: 'root directory of the app or library',
         default: '.',
       })
+      .option('includeAppJson', {
+        describe: 'include app.json in the hash',
+        default: false,
+      })
+      .option('includeLocalNativeFolders', {
+        describe: 'include iOS/Android contents in the hash',
+        default: false,
+      })
       .option('verbose', {
         alias: 'v',
         type: 'boolean',
@@ -98,6 +106,14 @@ void yargs(hideBin(process.argv))
       .positional('rootDir', {
         describe: 'root directory of the app or library',
         default: '.',
+      })
+      .option('includeAppJson', {
+        describe: 'include app.json in the hash',
+        default: false,
+      })
+      .option('includeLocalNativeFolders', {
+        describe: 'include iOS/Android contents in the hash',
+        default: false,
       })
       .option('verbose', {
         alias: 'v',
@@ -235,7 +251,7 @@ void yargs(hideBin(process.argv))
       console.log('list', argv);
     }
 
-    if (verbose) console.info(`getting dependency hash for native dependencies in: ${rootDir}`);
+    if (verbose) console.info(`getting dependency hash for ${platform} native dependencies in: ${rootDir}`);
 
     const allModules = await getModulesForPlatform(platform, rootDir);
 
@@ -284,7 +300,7 @@ void yargs(hideBin(process.argv))
       console.log('expo-native-dependency-hash', argv);
     }
 
-    if (verbose) console.info(`getting dependency hash for native dependencies in: ${rootDir}`);
+    if (verbose) console.info(`getting dependency hash for ${platform} native dependencies in: ${rootDir}`);
     const hash = await getCurrentHash(platform, {
       rootDir,
       verbose,

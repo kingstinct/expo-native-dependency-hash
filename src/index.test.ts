@@ -36,7 +36,7 @@ describe('Tests', () => {
         isNativeIOS: false,
         name: 'android-module-with-hash',
         nativeDependencyHash: {
-          ios: 'db408bcb42c49f4433aa8b5a95c083e8',
+          ios: 'e399fe1305eb2b7a64ea3cb69d92a1f4',
           android: '636f80339c58196c102ec0f4c9878503',
           all: '636f80339c58196c102ec0f4c9878503',
         },
@@ -106,8 +106,8 @@ describe('Tests', () => {
     ]);
   });
 
-  test('isGitDirty', () => {
-    const isIt = isGitDirty('.');
+  test('isGitDirty', async () => {
+    const isIt = await isGitDirty('.');
     expect(isIt).toBe(false);
   });
 
