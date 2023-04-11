@@ -12,6 +12,9 @@ import * as Path from 'node:path';
 import stableStringify from 'fast-safe-stringify';
 import { readFileSync } from 'fs';
 
+// eslint-disable-next-line import/no-extraneous-dependencies
+import '@total-typescript/ts-reset';
+
 import type { ExpoConfig, Android, IOS } from '@expo/config-types';
 
 export type Module = {
@@ -167,20 +170,25 @@ export const getModules = async (rootDir = '.') => {
         const path = Path.join(dir, m);
         if (m.startsWith('@')) {
           const submodules = await readdir(path);
-          const allSubmodules = await Promise.all(submodules.map<Promise<Module>>(async (s) => {
-            const pathToSubmodule = Path.join(dir, m, s);
-            const { version, nativeDependencyHash } = await readPackageJson(pathToSubmodule);
+          const allSubmodules = await Promise.all(
+            submodules.map<Promise<Module | false>>(async (s) => {
+              if (!m.startsWith('.')) {
+                return false;
+              }
+              const pathToSubmodule = Path.join(dir, m, s);
+              const { version, nativeDependencyHash } = await readPackageJson(pathToSubmodule);
 
-            return {
-              isNativeAndroid: await hasNativeVersion(Platform.android, path),
-              isNativeIOS: await hasNativeVersion(Platform.ios, path),
-              name: `${m}/${s}`,
-              path: pathToSubmodule,
-              version,
-              nativeDependencyHash,
-            };
-          }));
-          return allSubmodules;
+              return {
+                isNativeAndroid: await hasNativeVersion(Platform.android, path),
+                isNativeIOS: await hasNativeVersion(Platform.ios, path),
+                name: `${m}/${s}`,
+                path: pathToSubmodule,
+                version,
+                nativeDependencyHash,
+              };
+            }),
+          );
+          return allSubmodules.filter(Boolean);
         }
         const { version, nativeDependencyHash } = await readPackageJson(path);
 
@@ -200,7 +208,7 @@ export const getModules = async (rootDir = '.') => {
 
     return allModules;
   } catch (e) {
-    console.log(red(`Have you installed your packages? "${dir}" does not seem like a valid node_modules folder (${e as string})`));
+    console.log(red(`[expo-native-dependency-hash] Have you installed your packages? "${dir}" does not seem like a valid node_modules folder (${e as string})`));
     return process.exit(1);
   }
 };

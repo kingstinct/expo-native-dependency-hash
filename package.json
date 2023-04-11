@@ -1,6 +1,6 @@
 {
   "name": "expo-native-dependency-hash",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "license": "MIT",
   "author": {
     "name": "Robert Herber",
@@ -28,6 +28,7 @@
   ],
   "devDependencies": {
     "@expo/config-types": "^48.0.0",
+    "@total-typescript/ts-reset": "^0.4.2",
     "@types/jest": "^27.0.2",
     "@types/node": "^16.11.7",
     "@types/yargs": "^17.0.5",
