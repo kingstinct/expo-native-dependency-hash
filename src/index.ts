@@ -12,7 +12,6 @@ import * as Path from 'node:path';
 import stableStringify from 'fast-safe-stringify';
 import { readFileSync } from 'fs';
 
-// eslint-disable-next-line import/no-extraneous-dependencies
 import '@total-typescript/ts-reset';
 
 import type { ExpoConfig, Android, IOS } from '@expo/config-types';
