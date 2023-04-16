@@ -85,6 +85,8 @@ void yargs(hideBin(process.argv))
         {
           verbose,
           rootDir,
+          includeAppJson: argv.includeAppJson,
+          includeLocalNativeFolders: argv.includeLocalNativeFolders,
         },
       );
 
@@ -134,6 +136,8 @@ void yargs(hideBin(process.argv))
         {
           rootDir,
           verbose,
+          includeAppJson: argv.includeAppJson,
+          includeLocalNativeFolders: argv.includeLocalNativeFolders,
         },
       );
     },
@@ -279,6 +283,14 @@ void yargs(hideBin(process.argv))
       default: false,
       description: 'Skip including node_modules, useful for libraries',
     })
+    .option('includeAppJson', {
+      describe: 'include app.json in the hash',
+      default: false,
+    })
+    .option('includeLocalNativeFolders', {
+      describe: 'include iOS/Android contents in the hash',
+      default: false,
+    })
     .option('force', {
       type: 'boolean',
       description: 'Ignore if git is dirty',
@@ -287,6 +299,8 @@ void yargs(hideBin(process.argv))
     const verbose = argv.verbose || argv.v as boolean || false;
     const skipNodeModules = argv.skipNodeModules || false;
     const platform = argv.platform as Platform || argv.p as Platform || Platform.all;
+    const includeAppJson = argv.includeAppJson ?? false;
+    const includeLocalNativeFolders = argv.includeLocalNativeFolders ?? false;
 
     const { force } = argv;
 
@@ -305,6 +319,8 @@ void yargs(hideBin(process.argv))
       rootDir,
       verbose,
       skipNodeModules,
+      skipAppJson: !includeAppJson,
+      skipLocalNativeFolders: !includeLocalNativeFolders,
     });
     process.stdout.write(hash);
   })
