@@ -7,20 +7,20 @@ import {
 } from '.';
 
 describe('Tests', () => {
-  test('hasNativeVersion true', async () => {
-    const isNative = await hasNativeVersion(Platform.all, 'src/testdata/node_modules/native-module');
+  test('hasNativeVersion true', () => {
+    const isNative = hasNativeVersion(Platform.all, 'src/testdata/node_modules/native-module');
 
     expect(isNative).toBe(true);
   });
 
-  test('hasNativeVersion false', async () => {
-    const isNative = await hasNativeVersion(Platform.all, 'src/testdata/node_modules/js-module');
+  test('hasNativeVersion false', () => {
+    const isNative = hasNativeVersion(Platform.all, 'src/testdata/node_modules/js-module');
 
     expect(isNative).toBe(false);
   });
 
-  test('getModules', async () => {
-    const modules = await getModules('src/testdata');
+  test('getModules', () => {
+    const modules = getModules('src/testdata');
 
     expect(modules).toEqual<Module[]>([
       {
@@ -106,41 +106,41 @@ describe('Tests', () => {
     ]);
   });
 
-  test('isGitDirty', async () => {
-    const isIt = await isGitDirty('.');
+  test('isGitDirty', () => {
+    const isIt = isGitDirty('.');
     expect(isIt).toBe(false);
   });
 
-  test('getCurrentHash', async () => {
-    const hash = await getCurrentHash(Platform.all, { rootDir: path.join(__dirname, 'testdata'), verbose: true });
+  test('getCurrentHash', () => {
+    const hash = getCurrentHash(Platform.all, { rootDir: path.join(__dirname, 'testdata'), verbose: true });
 
     expect(hash).toEqual('b98c0e5d9ff15b1ca98d7aa3d09ebe39');
   });
 
-  test('verifyLibrary true', async () => {
-    const { hasChanged, valueExists } = await verifyLibrary({ rootDir: `${__dirname}/testdata/node_modules/android-module-with-hash`, verbose: true });
+  test('verifyLibrary true', () => {
+    const { hasChanged, valueExists } = verifyLibrary({ rootDir: `${__dirname}/testdata/node_modules/android-module-with-hash`, verbose: true });
 
     expect(hasChanged).toBe(false);
     expect(valueExists).toBe(true);
   }, 10000);
 
-  test('verifyLibrary without hash', async () => {
-    const { hasChanged, valueExists } = await verifyLibrary({ rootDir: `${__dirname}/testdata/node_modules/android-module`, verbose: true });
+  test('verifyLibrary without hash', () => {
+    const { hasChanged, valueExists } = verifyLibrary({ rootDir: `${__dirname}/testdata/node_modules/android-module`, verbose: true });
 
     expect(hasChanged).toBe(false);
     expect(valueExists).toBe(false);
   }, 10000);
 
-  test('verifyLibrary with faulty hash', async () => {
-    const { hasChanged, valueExists } = await verifyLibrary({ rootDir: `${__dirname}/testdata/node_modules/native-module-with-faulty-hash`, verbose: true });
+  test('verifyLibrary with faulty hash', () => {
+    const { hasChanged, valueExists } = verifyLibrary({ rootDir: `${__dirname}/testdata/node_modules/native-module-with-faulty-hash`, verbose: true });
 
     expect(hasChanged).toBe(true);
     expect(valueExists).toBe(true);
   }, 10000);
 
-  test('readPackageJson', async () => {
-    const jsModuleVersion = await readPackageJson('src/testdata/node_modules/js-module');
-    const nativeModuleVersion = await readPackageJson('src/testdata/node_modules/native-module');
+  test('readPackageJson', () => {
+    const jsModuleVersion = readPackageJson('src/testdata/node_modules/js-module');
+    const nativeModuleVersion = readPackageJson('src/testdata/node_modules/native-module');
 
     expect(jsModuleVersion.version).toEqual('0.0.1');
     expect(jsModuleVersion.nativeDependencyHash).toEqual(undefined);
