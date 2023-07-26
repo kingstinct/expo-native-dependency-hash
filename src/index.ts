@@ -243,7 +243,7 @@ const GENERATE_HASH_DEFAULTS: Required<GenerateHashOptions> = {
   skipNodeModules: false,
   verbose: false,
   skipAppJson: false,
-  skipLocalNativeFolders: false,
+  skipLocalNativeFolders: true,
 };
 
 type GenerateHashOptions = {
@@ -365,7 +365,7 @@ export const getCurrentHash = async (platform: Platform, {
 
   const nativeModules = skipNodeModules ? [] : await getModulesForPlatform(platform, rootDir);
 
-  const appPlugins = await getAppPluginHash('.', verbose);
+  const appPlugins = skipLocalNativeFolders ? '' : await getAppPluginHash('.', verbose);
 
   const nativeModuleIdentities = nativeModules.map(getModuleIdentity(platform));
   if (verbose && !skipNodeModules) {
@@ -509,15 +509,17 @@ export async function verifyLibrary(
   {
     verbose,
     rootDir,
+    skipLocalNativeFolders = false,
   }: {
     verbose: boolean;
     rootDir: string;
+    skipLocalNativeFolders?: boolean
   },
 ) {
   if (verbose) { console.info(`[expo-native-dependency-hash] verifying library in: ${rootDir}`); }
 
   const { ios, android, all } = await generateHashes({
-    rootDir, verbose, skipNodeModules: true, skipAppJson: true,
+    rootDir, verbose, skipNodeModules: true, skipAppJson: true, skipLocalNativeFolders,
   });
 
   let valueExists = false;
