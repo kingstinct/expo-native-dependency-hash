@@ -65,12 +65,17 @@ export const hasNativeVersion = async (platform: Platform, path: string) => {
 };
 
 export const readPackageJson = async (path: string) => {
-  const pkg = await readFile(Path.join(path, 'package.json'), 'utf8');
-  const pkgJson = JSON.parse(pkg) as {
-    version: string,
-    nativeDependencyHash?: Module['nativeDependencyHash']
-  };
-  return pkgJson;
+  try {
+    const pkg = await readFile(Path.join(path, 'package.json'), 'utf8');
+    const pkgJson = JSON.parse(pkg) as {
+      version: string,
+      nativeDependencyHash?: Module['nativeDependencyHash']
+    };
+    return pkgJson;
+  } catch (e) {
+    console.error(red('Failed to read package.json'), e);
+    return process.exit(1);
+  }
 };
 
 const hashIt = (str: string) => createHash('md5').update(str).digest('hex');
@@ -232,10 +237,18 @@ export const getModules = async (rootDir = '.') => {
   }
 };
 
-export const readExpoConfig = async (rootDir = '.') => {
-  const appJsonStr = await execAsync('npx expo config --json --full --type prebuild', { cwd: rootDir, encoding: 'utf-8', env: process.env });
-  const appJson = JSON.parse(appJsonStr.stdout) as { exp: ExpoConfig };
-  return appJson.exp;
+export const readExpoConfig = async (rootDir: string, verbose: boolean) => {
+  try {
+    const appJsonStr = await execAsync('npx expo config --json --full --type prebuild', { cwd: rootDir, encoding: 'utf-8', env: process.env });
+    if (verbose) {
+      console.log('Expo Config', appJsonStr);
+    }
+    const appJson = JSON.parse(appJsonStr.stdout) as { exp: ExpoConfig };
+    return appJson.exp;
+  } catch (e) {
+    console.error(red('Failed to read Expo Config'), e);
+    return process.exit(1);
+  }
 };
 
 const GENERATE_HASH_DEFAULTS: Required<GenerateHashOptions> = {
@@ -281,7 +294,7 @@ const getAppJsonHash = async (platform = Platform.all, rootDir = '.', verbose = 
   let appJsonContent = '';
 
   try {
-    const appJson = await readExpoConfig(rootDir);
+    const appJson = await readExpoConfig(rootDir, verbose);
 
     Object.keys(appJson || {}).forEach((key) => {
       if (!expoPropsToHash[key]) {
@@ -426,7 +439,7 @@ export async function verifyExpoApp(
   let hasChanged = false;
 
   try {
-    const expoConfig = await readExpoConfig(rootDir);
+    const expoConfig = await readExpoConfig(rootDir, verbose);
 
     if (expoConfig.runtimeVersion) {
       valueExists = true;

@@ -91,7 +91,7 @@ void yargs(hideBin(process.argv))
       );
 
       if (!valueExists) {
-        console.error(red('[expo-native-dependency-hash] No previous hash found, looked in Expo Config. Use "expo-native-dependency-hash generate" to create a new hash.'));
+        console.error(red('[expo-native-dependency-hash] No previous hash found, looked in Expo Config. Use "expo-native-dependency-hash expo-app-update" to create a new hash.'));
         process.exit(1);
       } else if (hasChanged) {
         console.error(red('[expo-native-dependency-hash] hash has changed'));
