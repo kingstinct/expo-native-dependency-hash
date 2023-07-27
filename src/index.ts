@@ -246,7 +246,7 @@ export const readExpoConfig = async (rootDir: string, verbose: boolean) => {
     const appJson = JSON.parse(appJsonStr.stdout) as { exp: ExpoConfig };
     return appJson.exp;
   } catch (e) {
-    console.error(red('Failed to read Expo Config'), e);
+    console.error(red('Failed to read Expo Config, this can happen if you\'re logging to stdout in your app.config.js file'), e);
     return process.exit(1);
   }
 };
