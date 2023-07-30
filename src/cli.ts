@@ -257,7 +257,7 @@ void yargs(hideBin(process.argv))
 
     if (verbose) console.info(`getting dependency hash for ${platform} native dependencies in: ${rootDir}`);
 
-    const allModules = await getModulesForPlatform(platform, rootDir);
+    const allModules = await getModulesForPlatform(platform, rootDir, verbose);
 
     const nativeModuleIdentities = allModules.map(getModuleIdentity(platform));
 

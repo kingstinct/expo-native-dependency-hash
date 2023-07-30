@@ -20,7 +20,7 @@ describe('Tests', () => {
   });
 
   test('getModules', async () => {
-    const modules = await getModules('src/testdata');
+    const modules = await getModules('src/testdata', false);
 
     expect(modules).toEqual<Module[]>([
       {

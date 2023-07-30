@@ -180,7 +180,7 @@ export const getHashFromPackage = async (
   }
 };
 
-export const getModules = async (rootDir = '.') => {
+export const getModules = async (rootDir: string, verbose: boolean) => {
   const dir = Path.join(rootDir, 'node_modules');
 
   try {
@@ -193,14 +193,25 @@ export const getModules = async (rootDir = '.') => {
       if (!m.startsWith('.')) {
         const path = Path.join(dir, m);
         if (m.startsWith('@')) {
+          if (verbose) {
+            console.log(`Found scope: ${m}`);
+          }
           const submodules = await readdir(path);
           const allSubmodules = await Promise.all(
             submodules.map<Promise<Module | false>>(async (s) => {
               if (s.startsWith('.')) {
                 return false;
               }
+
+              if (verbose) {
+                console.log(`Found scoped module: ${m}/${s}`);
+              }
+
               const pathToSubmodule = Path.join(dir, m, s);
-              const { version, nativeDependencyHash } = await readPackageJson(pathToSubmodule);
+              const {
+                version,
+                nativeDependencyHash,
+              } = await readPackageJson(pathToSubmodule);
 
               return {
                 isNativeAndroid: await hasNativeVersion(Platform.android, path),
@@ -243,7 +254,9 @@ export const readExpoConfig = async (rootDir: string, verbose: boolean) => {
     if (verbose) {
       console.log('Expo Config', appJsonStr);
     }
-    const appJson = JSON.parse(appJsonStr.stdout) as { exp: ExpoConfig };
+    const beginningOfConfig = appJsonStr.stdout.indexOf('{');
+    const configPart = appJsonStr.stdout.slice(beginningOfConfig);
+    const appJson = JSON.parse(configPart) as { exp: ExpoConfig };
     return appJson.exp;
   } catch (e) {
     console.error(red('Failed to read Expo Config, this can happen if you\'re logging to stdout in your app.config.js file'), e);
@@ -345,8 +358,12 @@ const getAppJsonHash = async (platform = Platform.all, rootDir = '.', verbose = 
   return appJsonContent;
 };
 
-export const getModulesForPlatform = async (platform = Platform.all, rootDir = '.') => {
-  const allModules = await getModules(rootDir);
+export const getModulesForPlatform = async (
+  platform: Platform,
+  rootDir: string,
+  verbose: boolean,
+) => {
+  const allModules = await getModules(rootDir, verbose);
 
   const nativeModules = allModules.filter((m) => {
     if (platform === Platform.ios) {
@@ -376,7 +393,11 @@ export const getCurrentHash = async (platform: Platform, {
 
   const appJsonContent = skipAppJson ? '' : await getAppJsonHash(platform, rootDir, verbose);
 
-  const nativeModules = skipNodeModules ? [] : await getModulesForPlatform(platform, rootDir);
+  const nativeModules = skipNodeModules ? [] : await getModulesForPlatform(
+    platform,
+    rootDir,
+    verbose,
+  );
 
   const appPlugins = skipLocalNativeFolders ? '' : await getAppPluginHash('.', verbose);
 
