@@ -132,7 +132,11 @@ export const getFolderHash = async (platform: Platform, rootDir: string, verbose
 };
 
 export const getAppPluginHash = async (rootDir: string, verbose = false) => {
-  const gitFiles = await execAsync('git ls-tree -r HEAD --name-only', { cwd: rootDir, encoding: 'utf8', env: process.env });
+  const gitFiles = await execAsync('git ls-tree -r HEAD --name-only', {
+    cwd: rootDir,
+    encoding: 'utf8',
+    env: process.env,
+  });
 
   const nativeFiles = gitFiles.stdout
     .split('\n')
@@ -213,14 +217,20 @@ export const getModules = async (rootDir: string, verbose: boolean) => {
                 nativeDependencyHash,
               } = await readPackageJson(pathToSubmodule);
 
-              return {
-                isNativeAndroid: await hasNativeVersion(Platform.android, path),
-                isNativeIOS: await hasNativeVersion(Platform.ios, path),
+              const data = {
+                isNativeAndroid: await hasNativeVersion(Platform.android, pathToSubmodule),
+                isNativeIOS: await hasNativeVersion(Platform.ios, pathToSubmodule),
                 name: `${m}/${s}`,
                 path: pathToSubmodule,
                 version,
                 nativeDependencyHash,
               };
+
+              if (verbose) {
+                console.log(JSON.stringify(data, null, 2));
+              }
+
+              return data;
             }),
           );
           return allSubmodules.filter(Boolean);
