@@ -304,10 +304,6 @@ void yargs(hideBin(process.argv))
 
     const { force } = argv;
 
-    if (!force) {
-      await throwIfGitDirty();
-    }
-
     const rootDir = absoluteOrRelativePath(argv.rootDir);
 
     if (verbose) {
