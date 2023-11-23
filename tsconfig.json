@@ -3,6 +3,7 @@
         "strictNullChecks": true,
         "noUncheckedIndexedAccess": true,
         "module": "commonjs",
-        "noEmit": true
+        "noEmit": true,
+        "esModuleInterop": true
     }
 }

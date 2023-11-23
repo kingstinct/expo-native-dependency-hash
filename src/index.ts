@@ -5,7 +5,7 @@ import {
 } from 'fs/promises';
 import { createHash } from 'crypto';
 import {
-  red, green, yellow, bold,
+  bold, yellow, red, green,
 } from 'chalk';
 import { exec } from 'child_process';
 import * as Path from 'node:path';
@@ -320,7 +320,6 @@ const expoPropsToHash: Partial<Record<keyof ExpoConfig, boolean>> = {
   android: true,
   ios: true,
   plugins: true,
-  entryPoint: true,
   jsEngine: true,
 };
 

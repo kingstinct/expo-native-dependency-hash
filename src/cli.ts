@@ -4,9 +4,7 @@ import yargs from 'yargs';
 
 import { hideBin } from 'yargs/helpers';
 import { join } from 'path';
-import {
-  red, green,
-} from 'chalk';
+import chalk from 'chalk';
 import {
   getCurrentHash,
   getModuleIdentity,
@@ -25,29 +23,10 @@ function absoluteOrRelativePath(path: string) {
 
 const throwIfGitDirty = async () => {
   if (await isGitDirty('.')) {
-    console.error(red('[expo-native-dependency-hash] Git working copy is dirty. Please commit or stash your changes before running this command.'));
+    console.error(chalk.red('[expo-native-dependency-hash] Git working copy is dirty. Please commit or stash your changes before running this command.'));
     process.exit(1);
   }
 };
-// function pathFromArg<T extends Record<string, any> = Record<string, any>>(
-//   argv: T,
-//   params: string[],
-//   rootDir: string,
-//   defaultValue: string,
-//   alwaysGeneratePath = false,
-// ): string | null {
-//   const paramWithValue = params.find((p) => argv[p]);
-//   const path = typeof paramWithValue === 'string'
-//     ? argv[paramWithValue] as unknown as string
-//     : !!params.find((p) => Object.keys(argv).includes(p));
-//   if (!path) {
-//     if (alwaysGeneratePath) {
-//       return join(rootDir, defaultValue);
-//     }
-//     return null;
-//   }
-//   return join(rootDir, typeof path === 'string' ? path : defaultValue);
-// }
 
 void yargs(hideBin(process.argv))
   .command(
@@ -91,13 +70,13 @@ void yargs(hideBin(process.argv))
       );
 
       if (!valueExists) {
-        console.error(red('[expo-native-dependency-hash] No previous hash found, looked in Expo Config. Use "expo-native-dependency-hash expo-app-update" to create a new hash.'));
+        console.error(chalk.red('[expo-native-dependency-hash] No previous hash found, looked in Expo Config. Use "expo-native-dependency-hash expo-app-update" to create a new hash.'));
         process.exit(1);
       } else if (hasChanged) {
-        console.error(red('[expo-native-dependency-hash] hash has changed'));
+        console.error(chalk.red('[expo-native-dependency-hash] hash has changed'));
         process.exit(1);
       } else {
-        console.log(green('[expo-native-dependency-hash] Hash up to date'));
+        console.log(chalk.green('[expo-native-dependency-hash] Hash up to date'));
       }
     },
   )
@@ -184,13 +163,13 @@ void yargs(hideBin(process.argv))
       );
 
       if (!valueExists) {
-        console.error(red('[expo-native-dependency-hash] No previous hash found, looked in package.json. Use "expo-native-dependency-hash update-library" to create a new hash'));
+        console.error(chalk.red('[expo-native-dependency-hash] No previous hash found, looked in package.json. Use "expo-native-dependency-hash update-library" to create a new hash'));
         process.exit(1);
       } else if (hasChanged) {
-        console.error(red('[expo-native-dependency-hash] Hash has changed'));
+        console.error(chalk.red('[expo-native-dependency-hash] Hash has changed'));
         process.exit(1);
       } else {
-        console.log(green('[expo-native-dependency-hash] Hash up to date'));
+        console.log(chalk.green('[expo-native-dependency-hash] Hash up to date'));
       }
     },
   )
@@ -244,7 +223,7 @@ void yargs(hideBin(process.argv))
     .option('nodeModulePaths', {
       type: 'array',
       string: true,
-      default: ['node_modules'],
+      default: 'node_modules',
       description: 'Custom path(s) to node_modules, common for monorepos',
     })
     .option('verbose', {
@@ -254,7 +233,7 @@ void yargs(hideBin(process.argv))
     }), async (argv) => {
     const verbose = argv.verbose || argv.v as boolean || false;
     const platform = argv.platform as Platform || argv.p as Platform || Platform.all;
-    const nodeModulePaths = argv.nodeModulePaths ?? ['node_modules'];
+    const nodeModulePaths = typeof argv.nodeModulePaths === 'string' ? [argv.nodeModulePaths] : argv.nodeModulePaths ?? ['node_modules'];
 
     const rootDir = absoluteOrRelativePath(argv.rootDir);
 
@@ -293,7 +272,7 @@ void yargs(hideBin(process.argv))
     .option('nodeModulePaths', {
       type: 'array',
       string: true,
-      default: ['node_modules'],
+      default: 'node_modules',
       description: 'Custom path(s) to node_modules, common for monorepos',
     })
     .option('includeAppJson', {
@@ -313,10 +292,14 @@ void yargs(hideBin(process.argv))
     const skipNodeModules = argv.skipNodeModules || false;
     const platform = argv.platform as Platform || argv.p as Platform || Platform.all;
     const includeAppJson = argv.includeAppJson ?? false;
-    const nodeModulePaths = argv.nodeModulePaths ?? ['node_modules'];
+    const nodeModulePaths = typeof argv.nodeModulePaths === 'string' ? [argv.nodeModulePaths] : argv.nodeModulePaths ?? ['node_modules'];
     const includeLocalNativeFolders = argv.includeLocalNativeFolders ?? false;
 
     const { force } = argv;
+
+    if (!force) {
+      await throwIfGitDirty();
+    }
 
     const rootDir = absoluteOrRelativePath(argv.rootDir);
 
@@ -331,6 +314,7 @@ void yargs(hideBin(process.argv))
       skipNodeModules,
       skipAppJson: !includeAppJson,
       skipLocalNativeFolders: !includeLocalNativeFolders,
+      nodeModulePaths,
     });
     process.stdout.write(hash);
   })

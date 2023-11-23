@@ -27,34 +27,35 @@
     "cli.js"
   ],
   "devDependencies": {
-    "@expo/config-types": "^48.0.0",
-    "@types/jest": "^27.0.2",
-    "@types/node": "^16.11.7",
-    "@types/yargs": "^17.0.5",
-    "@typescript-eslint/eslint-plugin": "5",
-    "@typescript-eslint/parser": "5",
-    "concurrently": "^8.0.1",
-    "eslint": "8",
+    "@expo/config-types": "^49.0.0",
+    "@types/jest": "^29.5.10",
+    "@types/node": "^20.9.4",
+    "@types/yargs": "^17.0.32",
+    "@typescript-eslint/eslint-plugin": "6.12.0",
+    "@typescript-eslint/parser": "6.12.0",
+    "concurrently": "^8.2.2",
+    "eslint": "8.54.0",
     "eslint-config-airbnb-base": "^15.0.0",
-    "eslint-config-airbnb-typescript": "16",
-    "eslint-plugin-import": "^2.22.1",
-    "expo": "^48.0.9",
-    "jest": "^27.3.1",
-    "ts-jest": "^27.0.7",
-    "ts-node": "^10.4.0",
-    "typescript": "^4.4.4"
+    "eslint-config-airbnb-typescript": "17.1.0",
+    "eslint-plugin-import": "^2.29.0",
+    "expo": "^49.0.20",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.1",
+    "ts-node": "^10.9.1",
+    "typescript": "5"
   },
   "scripts": {
     "start": "yarn build && node ./dist/index.js",
     "build": "tsc -p tsconfig.build.json",
     "test": "jest src",
     "lint": "eslint ./src --ext .js,.jsx,.ts,.tsx",
-    "prepublish": "concurrently \"yarn build\" \"yarn lint\" \"yarn test\""
+    "prepublish": "concurrently \"yarn build\" \"yarn lint\" \"yarn test\"",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@total-typescript/ts-reset": "^0.4.2",
+    "@total-typescript/ts-reset": "^0.5.1",
     "chalk": "4",
     "fast-safe-stringify": "^2.1.1",
-    "yargs": "^17.2.1"
+    "yargs": "^17.7.2"
   }
 }
