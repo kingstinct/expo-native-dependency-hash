@@ -298,7 +298,7 @@ type GenerateHashOptions = {
   skipNodeModules?: boolean,
   skipAppJson?: boolean,
   skipLocalNativeFolders?: boolean,
-  nodeModulePaths?: string[],
+  nodeModulePaths: string[],
 };
 
 // this is a list of properties that should be included, lets focus on not breaking things
@@ -463,11 +463,13 @@ export async function verifyExpoApp(
     rootDir,
     includeAppJson,
     includeLocalNativeFolders,
+    nodeModulePaths,
   }: {
     verbose: boolean;
     rootDir: string;
     includeLocalNativeFolders?: boolean;
     includeAppJson?: boolean;
+    nodeModulePaths: string[];
   },
 ) {
   if (verbose) { console.info(`[expo-native-dependency-hash] verifying expo app in: ${rootDir}`); }
@@ -477,6 +479,7 @@ export async function verifyExpoApp(
     verbose,
     skipAppJson: !includeAppJson,
     skipLocalNativeFolders: !includeLocalNativeFolders,
+    nodeModulePaths,
   });
 
   let valueExists = false;
@@ -525,11 +528,13 @@ export async function updateExpoApp(
     verbose,
     includeAppJson,
     includeLocalNativeFolders,
+    nodeModulePaths,
   }: {
     rootDir: string;
     verbose: boolean;
     includeAppJson?: boolean;
     includeLocalNativeFolders?: boolean;
+    nodeModulePaths: string[];
   },
 ) {
   const {
@@ -539,6 +544,7 @@ export async function updateExpoApp(
     verbose,
     includeAppJson,
     includeLocalNativeFolders,
+    nodeModulePaths,
   });
 
   if (!hasChanged && valueExists) {
@@ -576,7 +582,12 @@ export async function verifyLibrary(
   if (verbose) { console.info(`[expo-native-dependency-hash] verifying library in: ${rootDir}`); }
 
   const { ios, android, all } = await generateHashes({
-    rootDir, verbose, skipNodeModules: true, skipAppJson: true, skipLocalNativeFolders,
+    rootDir,
+    verbose,
+    skipNodeModules: true,
+    skipAppJson: true,
+    skipLocalNativeFolders,
+    nodeModulePaths: [],
   });
 
   let valueExists = false;
@@ -619,6 +630,7 @@ export async function updateLibrary(
   {
     rootDir,
     verbose,
+
   }: {
     rootDir: string;
     verbose: boolean;
@@ -632,7 +644,11 @@ export async function updateLibrary(
   }
 
   const { ios, android, all } = await generateHashes({
-    rootDir, verbose, skipNodeModules: true, skipAppJson: true,
+    rootDir,
+    verbose,
+    skipNodeModules: true,
+    skipAppJson: true,
+    nodeModulePaths: [],
   });
   const prevJson = await readPackageJson(rootDir);
 

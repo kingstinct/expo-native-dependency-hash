@@ -45,6 +45,12 @@ void yargs(hideBin(process.argv))
         describe: 'include iOS/Android contents in the hash',
         default: false,
       })
+      .option('nodeModulePaths', {
+        type: 'array',
+        string: true,
+        default: 'node_modules',
+        description: 'Custom path(s) to node_modules, common for monorepos',
+      })
       .option('verbose', {
         alias: 'v',
         type: 'boolean',
@@ -59,6 +65,7 @@ void yargs(hideBin(process.argv))
       }
 
       const rootDir = absoluteOrRelativePath(argv.rootDir);
+      const nodeModulePaths = typeof argv.nodeModulePaths === 'string' ? [argv.nodeModulePaths] : argv.nodeModulePaths ?? ['node_modules'];
 
       const { hasChanged, valueExists } = await verifyExpoApp(
         {
@@ -66,6 +73,7 @@ void yargs(hideBin(process.argv))
           rootDir,
           includeAppJson: argv.includeAppJson,
           includeLocalNativeFolders: argv.includeLocalNativeFolders,
+          nodeModulePaths,
         },
       );
 
@@ -96,6 +104,12 @@ void yargs(hideBin(process.argv))
         describe: 'include iOS/Android contents in the hash',
         default: false,
       })
+      .option('nodeModulePaths', {
+        type: 'array',
+        string: true,
+        default: 'node_modules',
+        description: 'Custom path(s) to node_modules, common for monorepos',
+      })
       .option('verbose', {
         alias: 'v',
         type: 'boolean',
@@ -103,6 +117,7 @@ void yargs(hideBin(process.argv))
       }),
     async (argv) => {
       const verbose = (argv.verbose || argv.v as boolean) ?? false;
+      const nodeModulePaths = typeof argv.nodeModulePaths === 'string' ? [argv.nodeModulePaths] : argv.nodeModulePaths ?? ['node_modules'];
 
       const rootDir = absoluteOrRelativePath(argv.rootDir);
 
@@ -117,6 +132,7 @@ void yargs(hideBin(process.argv))
           verbose,
           includeAppJson: argv.includeAppJson,
           includeLocalNativeFolders: argv.includeLocalNativeFolders,
+          nodeModulePaths,
         },
       );
     },

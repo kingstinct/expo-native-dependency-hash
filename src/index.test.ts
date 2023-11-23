@@ -199,7 +199,9 @@ describe('Tests', () => {
   });
 
   test('getCurrentHash', async () => {
-    const hash = await getCurrentHash(Platform.all, { rootDir: path.join(__dirname, 'testdata'), verbose: true, skipLocalNativeFolders: false });
+    const hash = await getCurrentHash(Platform.all, {
+      rootDir: path.join(__dirname, 'testdata'), verbose: true, skipLocalNativeFolders: false, nodeModulePaths: ['node_modules'],
+    });
 
     expect(hash).toEqual('b98c0e5d9ff15b1ca98d7aa3d09ebe39');
   });
