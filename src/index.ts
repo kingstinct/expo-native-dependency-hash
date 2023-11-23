@@ -184,76 +184,85 @@ export const getHashFromPackage = async (
   }
 };
 
-export const getModules = async (rootDir: string, verbose: boolean) => {
-  const dir = Path.join(rootDir, 'node_modules');
+export const getModules = async (rootDir: string, verbose: boolean, nodeModulePaths: string[]) => {
+  const dirs = nodeModulePaths.map((nmp) => Path.join(rootDir, nmp));
 
   try {
-    const modules = await readdir(dir);
+    const modules = (await Promise.all(dirs.map(async (dir) => {
+      const relativePaths = await readdir(dir);
+
+      return relativePaths.map((relativePath) => ({
+        relativePath,
+        dir,
+      }));
+    }))).flat();
 
     // check that node_modules exists
     // run npm / yarn check
 
-    const allModules = (await Promise.all(modules.map<Promise<Module[]>>(async (m) => {
-      if (!m.startsWith('.')) {
-        const path = Path.join(dir, m);
-        if (m.startsWith('@')) {
-          if (verbose) {
-            console.log(`Found scope: ${m}`);
+    const allModules = (await Promise.all(
+      modules.map<Promise<Module[]>>(async ({ relativePath, dir }) => {
+        if (!relativePath.startsWith('.')) {
+          const path = Path.join(dir, relativePath);
+          if (relativePath.startsWith('@')) {
+            if (verbose) {
+              console.log(`Found scope: ${relativePath}`);
+            }
+            const submodules = await readdir(path);
+            const allSubmodules = await Promise.all(
+              submodules.map<Promise<Module | false>>(async (s) => {
+                if (s.startsWith('.')) {
+                  return false;
+                }
+
+                if (verbose) {
+                  console.log(`Found scoped module: ${relativePath}/${s}`);
+                }
+
+                const pathToSubmodule = Path.join(dir, relativePath, s);
+                const {
+                  version,
+                  nativeDependencyHash,
+                } = await readPackageJson(pathToSubmodule);
+
+                const data = {
+                  isNativeAndroid: await hasNativeVersion(Platform.android, pathToSubmodule),
+                  isNativeIOS: await hasNativeVersion(Platform.ios, pathToSubmodule),
+                  name: `${relativePath}/${s}`,
+                  path: pathToSubmodule,
+                  version,
+                  nativeDependencyHash,
+                };
+
+                if (verbose) {
+                  console.log(JSON.stringify(data, null, 2));
+                }
+
+                return data;
+              }),
+            );
+            return allSubmodules.filter(Boolean);
           }
-          const submodules = await readdir(path);
-          const allSubmodules = await Promise.all(
-            submodules.map<Promise<Module | false>>(async (s) => {
-              if (s.startsWith('.')) {
-                return false;
-              }
+          const { version, nativeDependencyHash } = await readPackageJson(path);
 
-              if (verbose) {
-                console.log(`Found scoped module: ${m}/${s}`);
-              }
-
-              const pathToSubmodule = Path.join(dir, m, s);
-              const {
-                version,
-                nativeDependencyHash,
-              } = await readPackageJson(pathToSubmodule);
-
-              const data = {
-                isNativeAndroid: await hasNativeVersion(Platform.android, pathToSubmodule),
-                isNativeIOS: await hasNativeVersion(Platform.ios, pathToSubmodule),
-                name: `${m}/${s}`,
-                path: pathToSubmodule,
-                version,
-                nativeDependencyHash,
-              };
-
-              if (verbose) {
-                console.log(JSON.stringify(data, null, 2));
-              }
-
-              return data;
-            }),
-          );
-          return allSubmodules.filter(Boolean);
+          return [{
+            isNativeAndroid: await hasNativeVersion(Platform.android, path),
+            isNativeIOS: await hasNativeVersion(Platform.ios, path),
+            name: relativePath,
+            path,
+            version,
+            nativeDependencyHash,
+          }] as Module[];
         }
-        const { version, nativeDependencyHash } = await readPackageJson(path);
-
-        return [{
-          isNativeAndroid: await hasNativeVersion(Platform.android, path),
-          isNativeIOS: await hasNativeVersion(Platform.ios, path),
-          name: m,
-          path,
-          version,
-          nativeDependencyHash,
-        }] as Module[];
-      }
-      return [];
-    }))).flatMap((m) => m);
+        return [];
+      }),
+    )).flatMap((m) => m);
 
     allModules.sort((a, b) => a.name.localeCompare(b.name));
 
     return allModules;
   } catch (e) {
-    console.log(red(`[expo-native-dependency-hash] Have you installed your packages? "${dir}" does not seem like a valid node_modules folder (${e as string})`));
+    console.log(red(`[expo-native-dependency-hash] Have you installed your packages? "${nodeModulePaths.join(',')}" does not seem like a valid node_modules folder (${e as string})`));
     return process.exit(1);
   }
 };
@@ -280,6 +289,7 @@ const GENERATE_HASH_DEFAULTS: Required<GenerateHashOptions> = {
   verbose: false,
   skipAppJson: false,
   skipLocalNativeFolders: true,
+  nodeModulePaths: ['node_modules'],
 };
 
 type GenerateHashOptions = {
@@ -288,6 +298,7 @@ type GenerateHashOptions = {
   skipNodeModules?: boolean,
   skipAppJson?: boolean,
   skipLocalNativeFolders?: boolean,
+  nodeModulePaths?: string[],
 };
 
 // this is a list of properties that should be included, lets focus on not breaking things
@@ -372,8 +383,9 @@ export const getModulesForPlatform = async (
   platform: Platform,
   rootDir: string,
   verbose: boolean,
+  nodeModulePaths: string[],
 ) => {
-  const allModules = await getModules(rootDir, verbose);
+  const allModules = await getModules(rootDir, verbose, nodeModulePaths);
 
   const nativeModules = allModules.filter((m) => {
     if (platform === Platform.ios) {
@@ -394,6 +406,7 @@ export const getCurrentHash = async (platform: Platform, {
   verbose = GENERATE_HASH_DEFAULTS.verbose,
   skipAppJson = GENERATE_HASH_DEFAULTS.skipAppJson,
   skipLocalNativeFolders = GENERATE_HASH_DEFAULTS.skipLocalNativeFolders,
+  nodeModulePaths = GENERATE_HASH_DEFAULTS.nodeModulePaths,
 }: GenerateHashOptions = GENERATE_HASH_DEFAULTS) => {
   if (verbose) {
     console.log(`Getting hash for platform: ${platform}`);
@@ -407,6 +420,7 @@ export const getCurrentHash = async (platform: Platform, {
     platform,
     rootDir,
     verbose,
+    nodeModulePaths,
   );
 
   const appPlugins = skipLocalNativeFolders ? '' : await getAppPluginHash('.', verbose);

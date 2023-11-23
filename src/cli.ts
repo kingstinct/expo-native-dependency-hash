@@ -241,6 +241,12 @@ void yargs(hideBin(process.argv))
       type: 'string',
       description: 'ios, android or all',
     })
+    .option('nodeModulePaths', {
+      type: 'array',
+      string: true,
+      default: ['node_modules'],
+      description: 'Custom path(s) to node_modules, common for monorepos',
+    })
     .option('verbose', {
       alias: 'v',
       type: 'boolean',
@@ -248,6 +254,7 @@ void yargs(hideBin(process.argv))
     }), async (argv) => {
     const verbose = argv.verbose || argv.v as boolean || false;
     const platform = argv.platform as Platform || argv.p as Platform || Platform.all;
+    const nodeModulePaths = argv.nodeModulePaths ?? ['node_modules'];
 
     const rootDir = absoluteOrRelativePath(argv.rootDir);
 
@@ -257,7 +264,7 @@ void yargs(hideBin(process.argv))
 
     if (verbose) console.info(`getting dependency hash for ${platform} native dependencies in: ${rootDir}`);
 
-    const allModules = await getModulesForPlatform(platform, rootDir, verbose);
+    const allModules = await getModulesForPlatform(platform, rootDir, verbose, nodeModulePaths);
 
     const nativeModuleIdentities = allModules.map(getModuleIdentity(platform));
 
@@ -283,6 +290,12 @@ void yargs(hideBin(process.argv))
       default: false,
       description: 'Skip including node_modules, useful for libraries',
     })
+    .option('nodeModulePaths', {
+      type: 'array',
+      string: true,
+      default: ['node_modules'],
+      description: 'Custom path(s) to node_modules, common for monorepos',
+    })
     .option('includeAppJson', {
       describe: 'include app.json in the hash',
       default: false,
@@ -300,6 +313,7 @@ void yargs(hideBin(process.argv))
     const skipNodeModules = argv.skipNodeModules || false;
     const platform = argv.platform as Platform || argv.p as Platform || Platform.all;
     const includeAppJson = argv.includeAppJson ?? false;
+    const nodeModulePaths = argv.nodeModulePaths ?? ['node_modules'];
     const includeLocalNativeFolders = argv.includeLocalNativeFolders ?? false;
 
     const { force } = argv;
