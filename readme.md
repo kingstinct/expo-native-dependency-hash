@@ -1,5 +1,7 @@
 # expo-native-dependency-hash - Simplified native dependency tracking for React Native
 
+⚠️ Deprecation Notice: This was a precursor to what [Expo Fingerprint](https://expo.dev/blog/fingerprint-your-native-runtime) now provides officially, so no further updates or support will be provided to this library.
+
 [![expo-native-dependency-hash on NPM](https://img.shields.io/npm/v/expo-native-dependency-hash)](https://www.npmjs.com/package/expo-native-dependency-hash)
 
 `expo-native-dependency-hash` strives to make it easier to keep track of when the native dependencies of a Expo (or React Native) project has changed. It does so by (1) detecting native modules in node_modules and (2) generating a hash based on those package names and versions. It provides these commands:
